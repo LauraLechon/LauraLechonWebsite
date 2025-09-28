@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laura Lechon</title>
+    <link rel="icon" type="image/x-icon" href="logo.png">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: url('LAURA_LECHON_HOME_PAGE.jpg') no-repeat center center/cover;
+            text-align: center;
+            color: white;
+            min-height: 100vh; /* Ensure body covers the full viewport height */
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            position: absolute;
+            top: 0px;
+            width: 100%;
+            text-align: center;
+            z-index: 10; /* Ensure header is above other elements */
+        }
+        h1 {
+            font-size: 3.5rem;
+            font-family: serif;
+            margin: 0;
+        }
+        p {
+            font-size: 1.3rem;
+            margin: 5px 0;
+        }
+        .container {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex-grow: 1; /* Allow container to grow and fill available space */
+            background: rgba(0, 0, 0, 0.5);
+        }
+        .images {
+            top: 30px;
+            display: flex;
+            align-items: flex-end;
+            gap: 0px;
+            margin-top: 100px;
+            position: relative;
+        }
+        .images img {
+            width: 250px;
+            height: auto;
+            border-radius: 70px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 4);
+            transition: transform 0.3s ease;
+            border: 2px solid black;
+            animation: fadeIn 2s ease forwards;
+        }
+        .images img:nth-child(2) {
+            position: relative;
+            top: -50px;
+            animation: fadeIn 1s ease forwards;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .order-btn {
+            position: relative;
+            background: white;
+            color: black;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-top: 20px;
+            animation: pulse 1s infinite;
+            top: 15px;
+        }
+        .order-btn:hover {
+            background: #f40606;
+            animation: none;
+        }
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.1);
+            }
+        }
+        .footer {
+            position: relative;
+            bottom: -30px;
+            width: 100%;
+            font-size: 0.9rem;
+        }
+    
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .images img {
+                width: 300px;
+            }
+        }
+        @media (max-width: 992px) {
+            h1 {
+                font-size: 3rem;
+            }
+            p {
+                font-size: 1.1rem;
+            }
+            .images img {
+                width: 250px;
+            }
+            .order-btn {
+                padding: 12px 25px;
+                font-size: 1.1rem;
+            }
+        }
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.5rem;
+            }
+            p {
+                font-size: 1rem;
+            }
+            .images img {
+                width: 200px;
+            }
+            .order-btn {
+                padding: 10px 20px;
+                font-size: 1rem;
+            }
+        }
+        @media (max-width: 576px) {
+            h1 {
+                font-size: 2rem;
+            }
+            p {
+                font-size: 0.9rem;
+            }
+            .images {
+                flex-direction: column;
+                align-items: center;
+                gap: 20px;
+                margin-top: 50px;
+            }
+            .images img {
+                width: 150px;
+                border-radius: 50px;
+            }
+            .images img:nth-child(2) {
+                top: 0;
+            }
+            .order-btn {
+                padding: 8px 16px;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>LAURA LECHON</h1>
+        <p>Juicy, Crispy, Irresistible</p>
+    </div>
+    <div class="container">
+        <div class="images">
+            <img src="lechon1.jpg" alt="Lechon Image 1">
+            <img src="lechon2.jpg" alt="Lechon Image 2"> <!-- Middle image, positioned higher -->
+            <img src="lechon3.jpg" alt="Lechon Image 3">
+        </div>
+        <button class="order-btn" onclick="window.location.href='booking.html'">ORDER NOW</button>
+        <div class="footer">2025 ALL RIGHTS RESERVED.</div>
+    </div>
+</body>
+</html>

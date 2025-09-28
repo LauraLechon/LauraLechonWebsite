@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rider Signup - Laura Lechon</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="adminlogo.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <style>
+        :root {
+            --primary-color: #1d3a6b;
+            --primary-hover: #152a4a;
+            --error-color: #dc3545;
+            --text-color: #333;
+            --light-gray: #f0f4f8;
+            --border-color: #ddd;
+        }
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--light-gray);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            color: var(--text-color);
+        }
+        
+        .signup-container {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+            margin: 1rem;
+        }
+        
+        .logo {
+            width: 90px;
+            height: auto;
+            margin-bottom: 1.5rem;
+        }
+        
+        h1 {
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+            font-weight: 500;
+        }
+        
+        .form-group {
+            margin-bottom: 1.25rem;
+            text-align: left;
+            position: relative;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--primary-color);
+            font-weight: 500;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(29, 58, 107, 0.2);
+        }
+        
+        .signup-btn {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 0.5rem;
+        }
+        
+        .signup-btn:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+        
+        .signup-btn:active {
+            transform: translateY(0);
+        }
+        
+        .login-link {
+            margin-top: 1.5rem;
+            color: #666;
+            font-size: 0.875rem;
+        }
+        
+        .login-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+        
+        .login-link a:hover {
+            text-decoration: underline;
+        }
+        
+        .error {
+            color: var(--error-color);
+            margin-top: 0.25rem;
+            font-size: 0.875rem;
+            display: none;
+        }
+        
+        .password-hint {
+            font-size: 0.75rem;
+            color: #666;
+            margin-top: 0.25rem;
+        }
+        
+        @media (max-width: 480px) {
+            .signup-container {
+                padding: 1.5rem;
+            }
+            
+            h1 {
+                font-size: 1.25rem;
+                margin-bottom: 1.25rem;
+            }
+        }
+        
+        .contact-input-container {
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+        
+        .country-code {
+            background: var(--primary-color);
+            color: white;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-right: none;
+            border-radius: 5px 0 0 5px;
+            font-weight: 500;
+            font-size: 14px;
+            min-width: 45px;
+            text-align: center;
+        }
+        
+        .contact-input-container input {
+            border-radius: 0 5px 5px 0;
+            flex: 1;
+        }
+        
+        .password-toggle {
+            position: absolute;
+            right: 10px;
+            top: 38px;
+            cursor: pointer;
+            color: #666;
+            transition: color 0.3s ease;
+        }
+        
+        .password-toggle:hover {
+            color: var(--primary-color);
+        }
+        
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        }
+        
+        .modal-header {
+            margin-bottom: 1rem;
+        }
+        
+        .modal-title {
+            color: var(--primary-color);
+            margin: 0;
+        }
+        
+        .modal-body {
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
+        }
+        
+        .modal-footer {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+        }
+        
+        .modal-btn {
+            padding: 0.5rem 1.5rem;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .modal-btn:hover {
+            background: var(--primary-hover);
+        }
+    </style>
+</head>
+<body>
+    <div class="signup-container">
+        <img src="adminlogo.png" alt="Laura Lechon Logo" class="logo">
+        <h1>Rider Signup</h1>
+        
+        <div class="container">
+            <form id="signupForm" onsubmit="signup(event)">
+                <div class="form-group">
+                    <label for="name">Full Name</label>
+                    <input type="text" id="name" placeholder="Enter your full name" required>
+                    <div class="error" id="nameError">Please enter your full name</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" placeholder="Enter your email" required>
+                    <div class="error" id="emailError">Please enter a valid email</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="contact">Contact Number</label>
+                    <div class="contact-input-container">
+                        <div class="country-code">+63</div>
+                        <input type="tel" id="contact" placeholder="9123456789" pattern="[0-9]{10}" required>
+                    </div>
+                    <div class="error" id="contactError">Please enter a valid 10-digit contact number</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="vehicle">Vehicle Type</label>
+                    <select id="vehicle" required>
+                        <option value="">Select vehicle type</option>
+                        <option value="Motorcycle">Motorcycle</option>
+                        <option value="Bicycle">Bicycle</option>
+                        <option value="Car">Car</option>
+                        <option value="Tricycle">Tricycle</option>
+                    </select>
+                    <div class="error" id="vehicleError">Please select a vehicle type</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="plate">Plate Number</label>
+                    <input type="text" id="plate" placeholder="Enter plate number">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="Enter password" required>
+                    <i class="fas fa-eye password-toggle" id="passwordToggle"></i>
+                    <div class="error" id="passwordError">Password must be at least 6 characters</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <input type="password" id="confirmPassword" placeholder="Confirm password" required>
+                    <i class="fas fa-eye password-toggle" id="confirmPasswordToggle"></i>
+                    <div class="error" id="confirmPasswordError">Passwords do not match</div>
+                </div>
+                
+                <div class="error" id="formError"></div>
+                
+                <button type="submit" class="signup-btn">Sign Up</button>
+                
+                <p class="login-link">Already have an account? <a href="rider-login.html">Login here</a></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Verification Modal -->
+    <div id="verificationModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Account Verification</h3>
+            </div>
+            <div class="modal-body">
+                <p>Thank you for signing up! Please wait while the admin verifies your account.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn" onclick="window.location.href='rider-login.html'">Go to Login</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Add notification container
+        const notificationContainer = document.createElement('div');
+        notificationContainer.className = 'notification-container';
+        document.body.appendChild(notificationContainer);
+
+        // Function to show notifications
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            
+            let icon = 'check-circle';
+            if (type === 'error') icon = 'exclamation-circle';
+            if (type === 'warning') icon = 'exclamation-triangle';
+            if (type === 'info') icon = 'info-circle';
+            
+            notification.innerHTML = `
+                <i class="fas fa-${icon}"></i>
+                <span class="message">${message}</span>
+            `;
+            
+            notificationContainer.appendChild(notification);
+            
+            // Trigger animation
+            setTimeout(() => {
+                notification.style.opacity = '1';
+                notification.style.transform = 'translateX(0)';
+            }, 10);
+            
+            // Remove notification after animation
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => {
+                    notificationContainer.removeChild(notification);
+                }, 500);
+            }, 3000);
+        }
+
+        async function signup(event) {
+            event.preventDefault();
+            
+            // Get form values
+            const name = document.getElementById('name').value.trim();
+            const email = document.getElementById('email').value.trim().toLowerCase();
+            const contact = document.getElementById('contact').value.trim();
+            const vehicleType = document.getElementById('vehicle').value;
+            const plateNumber = document.getElementById('plate').value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            // Show loading state
+            const signupBtn = event.target.querySelector('button[type="submit"]');
+            const originalBtnText = signupBtn.innerHTML;
+            signupBtn.disabled = true;
+            signupBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating account...';
+
+            try {
+                // Clear previous errors
+                document.querySelectorAll('.error').forEach(el => el.style.display = 'none');
+
+                // Validate form
+                if (!name || !email || !contact || !vehicleType || !password || !confirmPassword) {
+                    throw new Error('Please fill in all required fields');
+                }
+
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                    throw new Error('Please enter a valid email address');
+                }
+
+                if (password !== confirmPassword) {
+                    throw new Error('Passwords do not match');
+                }
+
+                if (password.length < 6) {
+                    throw new Error('Password must be at least 6 characters long');
+                }
+
+                console.log('Creating rider account...');
+                
+                // First, check if rider already exists by email
+                const { data: existingRider, error: checkError } = await supabase
+                    .from('riders')
+                    .select('id')
+                    .eq('email', email)
+                    .maybeSingle();
+
+                if (existingRider) {
+                    throw new Error('This email is already registered. Please use a different email or try logging in.');
+                }
+
+                // Create new rider with hashed password
+                const { data: newRider, error: createError } = await supabase
+                    .from('riders')
+                    .insert([{
+                        name,
+                        email,
+                        contact,
+                        password: password, // Store the password directly (should be hashed on the server side)
+                        vehicle_type: vehicleType,
+                        plate_number: plateNumber,
+                        status: 'Pending',
+                        created_at: new Date().toISOString()
+                    }])
+                    .select()
+                    .single();
+                
+                if (createError) {
+                    console.error('Database error:', createError);
+                    throw new Error('Failed to create account. Please try again.');
+                }
+
+                console.log('Rider account created successfully');
+                const riderData = newRider;
+                console.log('Rider profile created successfully');
+
+                // Show success message
+                showNotification('Account created successfully! Please check your email to verify your account.', 'success');
+                
+                // Show verification modal
+                document.getElementById('verificationModal').style.display = 'flex';
+                
+                // Reset form
+                event.target.reset();
+                
+            } catch (error) {
+                console.error('Signup error:', error);
+                showNotification(error.message || 'An error occurred during signup', 'error');
+                
+                // Re-enable the signup button
+                if (signupBtn) {
+                    signupBtn.disabled = false;
+                    signupBtn.innerHTML = 'Sign Up';
+                }
+            }
+        }
+        
+        // Real-time password match validation
+        document.getElementById('confirmPassword').addEventListener('input', function() {
+            const password = document.getElementById('password').value;
+            const confirmPassword = this.value;
+            const error = document.getElementById('confirmPasswordError');
+            
+            if (password !== confirmPassword) {
+                error.style.display = 'block';
+            } else {
+                error.style.display = 'none';
+            }
+        });
+        
+        // Clear errors when user starts typing
+        document.querySelectorAll('input, select').forEach(element => {
+            element.addEventListener('input', function() {
+                const errorId = this.id + 'Error';
+                const error = document.getElementById(errorId);
+                if (error) {
+                    error.style.display = 'none';
+                }
+                document.getElementById('formError').style.display = 'none';
+            });
+        });
+
+        // Add password toggle functionality
+        document.getElementById('passwordToggle').addEventListener('click', function() {
+            const passwordInput = document.getElementById('password');
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            this.classList.toggle('fa-eye');
+            this.classList.toggle('fa-eye-slash');
+        });
+
+        document.getElementById('confirmPasswordToggle').addEventListener('click', function() {
+            const passwordInput = document.getElementById('confirmPassword');
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            this.classList.toggle('fa-eye');
+            this.classList.toggle('fa-eye-slash');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Laura Lechon Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="adminlogo.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* General Styles */
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: white;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .login-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            margin: 1rem;
+            position: relative;
+            overflow: hidden;
+            border: 2px solid #1d3a6b;
+        }
+
+        .login-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: linear-gradient(90deg, #FFD700, #FFA500);
+        }
+
+        .logo {
+            width: 100px;
+            margin-bottom: 1.5rem;
+            transition: transform 0.3s ease;
+        }
+
+        .logo:hover {
+            transform: scale(1.05);
+        }
+
+        .login-container h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #1d3a6b;
+            margin-bottom: 1.5rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+            position: relative;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #1d3a6b;
+            font-weight: 500;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .login-container input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e0e6ed;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: #f8fafc;
+        }
+
+        .login-container input:focus {
+            outline: none;
+            border-color: #1d3a6b;
+            box-shadow: 0 0 0 3px rgba(29, 58, 107, 0.1);
+            background: white;
+        }
+
+        .login-container button {
+            width: 100%;
+            padding: 1rem;
+            background: #1d3a6b;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 2rem;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-container button:hover {
+            background: #152a4a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(29, 58, 107, 0.2);
+        }
+
+        .login-container button:active {
+            transform: translateY(0);
+        }
+
+        .login-container button::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 5px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.5);
+            opacity: 0;
+            border-radius: 100%;
+            transform: scale(1, 1) translate(-50%);
+            transform-origin: 50% 50%;
+        }
+
+        .login-container button:focus:not(:active)::after {
+            animation: ripple 1s ease-out;
+        }
+
+        @keyframes ripple {
+            0% {
+                transform: scale(0, 0);
+                opacity: 0.5;
+            }
+            100% {
+                transform: scale(100, 100);
+                opacity: 0;
+            }
+        }
+
+        .error-message {
+            color: #dc3545;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            text-align: left;
+            display: none;
+            padding: 0.5rem;
+            background: #fff5f5;
+            border-radius: 4px;
+            border-left: 3px solid #dc3545;
+        }
+
+        .login-attempts {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: #fff5f5;
+            color: #dc3545;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            display: none;
+        }
+
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 1.5rem;
+                margin: 1rem;
+            }
+
+            .login-container h1 {
+                font-size: 1.5rem;
+            }
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 10px;
+            top: 38px;
+            cursor: pointer;
+            color: #666;
+            transition: color 0.3s ease;
+        }
+        
+        .password-toggle:hover {
+            color: var(--primary-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-attempts" id="loginAttempts"></div>
+        <img src="adminlogo.png" alt="Laura Lechon Logo" class="logo">
+        <h1>Admin Login</h1>
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" autocomplete="username" placeholder="Enter your username" required>
+            <div class="error-message" id="usernameError">Please enter a valid username</div>
+        </div>
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" autocomplete="current-password" placeholder="Enter your password" required>
+            <i class="fas fa-eye password-toggle" id="passwordToggle"></i>
+            <div class="error-message" id="passwordError">Please enter your password</div>
+        </div>
+        <button onclick="login()">Login</button>
+        <div class="error-message" id="loginErrorMessage">Invalid username or password.</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+
+    <script>
+        // Admin credentials (in a real application, this would be stored securely on the server)
+        const adminCredentials = {
+            username: "admin",
+            password: "LauraLechon2024!"
+        };
+
+        // Login attempt tracking
+        let loginAttempts = 0;
+        const maxAttempts = 3;
+        let lockoutTime = 0;
+        const lockoutDuration = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+        // Check for existing lockout
+        function checkLockout() {
+            const now = Date.now();
+            if (lockoutTime > 0 && now < lockoutTime) {
+                const remainingTime = Math.ceil((lockoutTime - now) / 1000);
+                showLockoutMessage(remainingTime);
+                return true;
+            }
+            return false;
+        }
+
+        // Show lockout message
+        function showLockoutMessage(seconds) {
+            const loginAttemptsDiv = document.getElementById('loginAttempts');
+            loginAttemptsDiv.style.display = 'block';
+            loginAttemptsDiv.textContent = `Account locked. Try again in ${seconds} seconds`;
+            
+            // Update countdown
+            const countdown = setInterval(() => {
+                seconds--;
+                if (seconds <= 0) {
+                    clearInterval(countdown);
+                    loginAttemptsDiv.style.display = 'none';
+                    lockoutTime = 0;
+                } else {
+                    loginAttemptsDiv.textContent = `Account locked. Try again in ${seconds} seconds`;
+                }
+            }, 1000);
+        }
+
+        // Validate form fields
+        function validateForm() {
+            let isValid = true;
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const usernameError = document.getElementById('usernameError');
+            const passwordError = document.getElementById('passwordError');
+
+            // Reset errors
+            usernameError.style.display = 'none';
+            passwordError.style.display = 'none';
+
+            if (!username.trim()) {
+                usernameError.style.display = 'block';
+                isValid = false;
+            }
+
+            if (!password.trim()) {
+                passwordError.style.display = 'block';
+                isValid = false;
+            }
+
+            return isValid;
+        }
+
+        // Login function
+        async function login() {
+            if (checkLockout()) return;
+            if (!validateForm()) return;
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const loginErrorMessage = document.getElementById('loginErrorMessage');
+
+            try {
+                // Get admin credentials from Supabase
+                const { data: credentials, error: credentialsError } = await supabase
+                    .from('admin_credentials')
+                    .select('*')
+                    .single();
+
+                if (credentialsError) {
+                    // If no credentials found in Supabase, use default credentials
+                    if (username === adminCredentials.username && password === adminCredentials.password) {
+                        await handleSuccessfulLogin(username);
+                    } else {
+                        handleFailedLogin();
+                    }
+                    return;
+                }
+
+                // Check if credentials match
+                if (username === credentials.username && password === credentials.password) {
+                    await handleSuccessfulLogin(username);
+                } else {
+                    handleFailedLogin();
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                loginErrorMessage.textContent = 'An error occurred during login. Please try again.';
+                loginErrorMessage.style.display = 'block';
+            }
+        }
+
+        async function handleSuccessfulLogin(username) {
+            // Reset login attempts on successful login
+            loginAttempts = 0;
+            
+            try {
+                // Create admin session in Supabase
+                const { data: session, error } = await supabase
+                    .from('admin_sessions')
+                    .insert([
+                        {
+                            username: username,
+                            last_active: new Date().toISOString()
+                        }
+                    ])
+                    .select()
+                    .single();
+
+                if (error) {
+                    console.error('Supabase error:', error);
+                    throw new Error('Failed to create session');
+                }
+
+                if (!session) {
+                    throw new Error('No session data returned');
+                }
+
+                // Store session ID and admin status in localStorage
+                localStorage.setItem('adminSessionId', session.id);
+                localStorage.setItem('isAdminLoggedIn', 'true');
+                
+                // Wait a moment to ensure localStorage is set
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                // Redirect to admin.html
+                window.location.href = 'admin.html';
+            } catch (supabaseError) {
+                console.error('Supabase operation error:', supabaseError);
+                throw new Error('Failed to create admin session');
+            }
+        }
+
+        function handleFailedLogin() {
+            // Increment login attempts
+            loginAttempts++;
+            
+            // Show error message
+            const loginErrorMessage = document.getElementById('loginErrorMessage');
+            loginErrorMessage.style.display = 'block';
+            loginErrorMessage.textContent = `Invalid username or password. ${maxAttempts - loginAttempts} attempts remaining.`;
+
+            // Check if max attempts reached
+            if (loginAttempts >= maxAttempts) {
+                lockoutTime = Date.now() + lockoutDuration;
+                showLockoutMessage(Math.ceil(lockoutDuration / 1000));
+            }
+        }
+
+        // Add event listener for Enter key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                login();
+            }
+        });
+
+        // Clear error when user starts typing
+        document.getElementById('username').addEventListener('input', function() {
+            document.getElementById('loginErrorMessage').style.display = 'none';
+            document.getElementById('usernameError').style.display = 'none';
+        });
+
+        document.getElementById('password').addEventListener('input', function() {
+            document.getElementById('loginErrorMessage').style.display = 'none';
+            document.getElementById('passwordError').style.display = 'none';
+        });
+
+        // Check for existing lockout on page load
+        window.addEventListener('load', function() {
+            if (checkLockout()) {
+                showLockoutMessage(Math.ceil((lockoutTime - Date.now()) / 1000));
+            }
+        });
+
+        // Add password toggle functionality
+        document.getElementById('passwordToggle').addEventListener('click', function() {
+            const passwordInput = document.getElementById('password');
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            this.classList.toggle('fa-eye');
+            this.classList.toggle('fa-eye-slash');
+        });
+    </script>
+</body>
+</html>

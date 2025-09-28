@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Form</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="icon" type="image/x-icon" href="logo.png">
+    <style>
+        :root {
+            --primary-color: #3E2217;
+            --secondary-color: #4A2C1F;
+            --accent-color: #FFD700;
+            --text-color: #FFFFFF;
+            --error-color: #FF6B6B;
+            --success-color: #6BCB77;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--primary-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            background-color: var(--secondary-color);
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            color: var(--accent-color);
+        }
+        
+        .content {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .image-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .image-section img {
+            width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease;
+        }
+        
+        .image-section img:hover {
+            transform: scale(1.03);
+        }
+        
+        .form-section {
+            background-color: var(--secondary-color);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--accent-color);
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #5C3A2D;
+            border-radius: 8px;
+            background-color: #5C3A2D;
+            color: var(--text-color);
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+        
+        .error-message {
+            color: var(--error-color);
+            font-size: 0.85rem;
+            margin-top: 5px;
+            display: none;
+        }
+        
+        .sizes {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .size-box {
+            background: #5C3A2D;
+            padding: 15px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .size-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .size-box.active {
+            border: 2px solid var(--accent-color);
+        }
+        
+        .size-box img {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 10px;
+            background: white;
+        }
+        
+        .size-info {
+            text-align: center;
+        }
+        
+        .size-name {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .size-price {
+            color: var(--accent-color);
+            font-weight: bold;
+        }
+        
+        .size-qty {
+            width: 60px;
+            text-align: center;
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #7A4F3F;
+            background: #7A4F3F;
+            color: var(--text-color);
+        }
+        
+        .payment-note {
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255, 215, 0, 0.1);
+            border-radius: 8px;
+            border-left: 4px solid var(--accent-color);
+        }
+        
+        .btn {
+            display: inline-block;
+            width: 100%;
+            padding: 15px;
+            background: var(--accent-color);
+            color: var(--primary-color);
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        
+        .btn:hover {
+            background: #E6C200;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+        
+        .modal-content {
+            background: var(--secondary-color);
+            padding: 25px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            animation: modalFadeIn 0.3s ease;
+        }
+        
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .modal-header {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .modal-header h2 {
+            color: var(--accent-color);
+            font-size: 1.5rem;
+        }
+        
+        .modal-body {
+            margin-bottom: 20px;
+        }
+        
+        .modal-body p {
+            margin-bottom: 10px;
+        }
+        
+        .modal-body strong {
+            color: var(--accent-color);
+        }
+        
+        .modal-footer {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: var(--error-color);
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        .close-btn:hover {
+            background: #e60000;
+            transform: rotate(90deg);
+        }
+        
+        .upload-container {
+            margin: 15px 0;
+        }
+        
+        .upload-label {
+            display: block;
+            margin-bottom: 8px;
+        }
+        
+        .upload-btn {
+            display: inline-block;
+            padding: 10px 15px;
+            background: #5C3A2D;
+            color: var(--text-color);
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            border: 1px dashed #7A4F3F;
+        }
+        
+        .upload-btn:hover {
+            background: #7A4F3F;
+        }
+        
+        .uploaded-image {
+            max-width: 100%;
+            max-height: 200px;
+            margin-top: 15px;
+            border-radius: 8px;
+            display: none;
+            border: 2px solid var(--accent-color);
+        }
+        
+        .payment-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .payment-option {
+            padding: 15px;
+            background: #5C3A2D;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            border: 2px solid transparent;
+        }
+        
+        .payment-option:hover {
+            border-color: var(--accent-color);
+            transform: translateY(-3px);
+        }
+        
+        .payment-option.selected {
+            border-color: var(--accent-color);
+            background: rgba(255, 215, 0, 0.1);
+        }
+        
+        .order-summary-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #5C3A2D;
+        }
+        
+        .order-summary-item:last-child {
+            border-bottom: none;
+        }
+        
+        .order-summary-total {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--accent-color);
+            margin-top: 15px;
+        }
+        
+        .gcash-info {
+            background: rgba(0, 128, 0, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #00A67C;
+            margin: 15px 0;
+        }
+        
+        .success-message {
+            text-align: center;
+            padding: 20px;
+            color: var(--success-color);
+            font-size: 1.2rem;
+        }
+        
+        /* Responsive Styles */
+        @media (min-width: 768px) {
+            .content {
+                flex-direction: row;
+            }
+            
+            .image-section {
+                width: 30%;
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .form-section {
+                width: 70%;
+            }
+            
+            .header h1 {
+                font-size: 2.5rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .sizes {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .header h1 {
+                font-size: 1.8rem;
+            }
+        }
+        
+        .contact-input-container {
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+        
+        .country-code {
+            background: var(--secondary-color);
+            color: var(--text-color);
+            padding: 10px 12px;
+            border: 1px solid #ccc;
+            border-right: none;
+            border-radius: 5px 0 0 5px;
+            font-weight: 500;
+            font-size: 14px;
+            min-width: 45px;
+            text-align: center;
+        }
+        
+        .contact-input-container input {
+            border-radius: 0 5px 5px 0;
+            flex: 1;
+        }
+        
+        .qr-code-container {
+            text-align: center;
+            margin: 15px 0;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+        
+        .qr-code {
+            width: 200px;
+            height: 200px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border: 2px solid var(--accent-color);
+        }
+        
+        .qr-note {
+            color: var(--accent-color);
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+        
+        .reference-container {
+            margin: 15px 0;
+        }
+        
+        .reference-label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--accent-color);
+        }
+        
+        .reference-container input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #5C3A2D;
+            border-radius: 8px;
+            background-color: #5C3A2D;
+            color: var(--text-color);
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        .reference-container input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-utensils"></i> Laura Lechon Order Form</h1>
+            <p>Fill out the form below to place your order</p>
+        </div>
+        
+        <div class="content">
+            <!-- Image Section -->
+            <div class="image-section">
+                <img src="Laura Logo.png" alt="Laura's Lechon Logo">
+                <img src="Elite Business.png" alt="Elite Business Award">
+                <img src="Elite Leadership.png" alt="Elite Leadership Award">
+            </div>
+            
+            <!-- Form Section -->
+            <div class="form-section">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="receiverName"><i class="fas fa-user"></i> Name of Client:</label>
+                        <input type="text" id="receiverName" placeholder="Complete Name" required pattern="[A-Za-z\s]+">
+                        <div class="error-message" id="receiverNameError">Please enter a valid name (letters only)</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="contactNumber"><i class="fas fa-phone"></i> Contact Number:</label>
+                        <div class="contact-input-container">
+                            <div class="country-code">+63</div>
+                            <input type="tel" id="contactNumber" placeholder="9123456789" required pattern="[0-9]{10}">
+                        </div>
+                        <div class="error-message" id="contactNumberError">Please enter a valid 10-digit phone number (e.g., 9123456789)</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="email"><i class="fas fa-envelope"></i> Email:</label>
+                        <input type="email" id="email" placeholder="email@example.com" required>
+                        <div class="error-message" id="emailError">Please enter a valid email address</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="date"><i class="fas fa-calendar-alt"></i> Date of Delivery:</label>
+                        <input type="date" id="date" required>
+                        <div class="error-message" id="dateError">Please select a delivery date</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="time"><i class="fas fa-clock"></i> Preferred Time:</label>
+                        <input type="time" id="time" required>
+                        <div class="error-message" id="timeError">Please select a delivery time</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="deliveryAddress"><i class="fas fa-map-marker-alt"></i> Delivery Address:</label>
+                        <input type="text" id="deliveryAddress" placeholder="Street, Barangay, Town/City" required>
+                        <div class="error-message" id="deliveryAddressError">Please enter a delivery address</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="landmarks"><i class="fas fa-landmark"></i> Landmarks:</label>
+                        <input type="text" id="landmarks" placeholder="Nearby landmarks or reference points">
+                    </div>
+                </div>
+                
+                <h2><i class="fas fa-weight-hanging"></i> Available Sizes:</h2>
+                <div class="sizes">
+                    <div class="size-box" data-size="Midget">
+                        <img src="Midget.jpg" alt="Midget">
+                        <div class="size-info">
+                            <div class="size-name">Midget</div>
+                            <div>2kg Raw Weight</div>
+                            <div class="size-price">₱1000.00</div>
+                        </div>
+                        <label>Quantity:</label>
+                        <input type="number" class="size-qty" id="midgetQty" min="0" value="0">
+                    </div>
+                    <div class="size-box" data-size="Junior">
+                        <img src="Junior.jpg" alt="Junior">
+                        <div class="size-info">
+                            <div class="size-name">Junior</div>
+                            <div>3kg Raw Weight</div>
+                            <div class="size-price">₱1700.00</div>
+                        </div>
+                        <label>Quantity:</label>
+                        <input type="number" class="size-qty" id="juniorQty" min="0" value="0">
+                    </div>
+                    <div class="size-box" data-size="Small">
+                        <img src="Small.jpg" alt="Small">
+                        <div class="size-info">
+                            <div class="size-name">Small</div>
+                            <div>4kg Raw Weight</div>
+                            <div class="size-price">₱2000.00</div>
+                        </div>
+                        <label>Quantity:</label>
+                        <input type="number" class="size-qty" id="smallQty" min="0" value="0">
+                    </div>
+                    <div class="size-box" data-size="Medium">
+                        <img src="Medium.jpg" alt="Medium">
+                        <div class="size-info">
+                            <div class="size-name">Medium</div>
+                            <div>5kg Raw Weight</div>
+                            <div class="size-price">₱2500.00</div>
+                        </div>
+                        <label>Quantity:</label>
+                        <input type="number" class="size-qty" id="mediumQty" min="0" value="0">
+                    </div>
+                    <div class="size-box" data-size="Large">
+                        <img src="Large.jpg" alt="Large">
+                        <div class="size-info">
+                            <div class="size-name">Large</div>
+                            <div>6kg Raw Weight</div>
+                            <div class="size-price">₱3000.00</div>
+                        </div>
+                        <label>Quantity:</label>
+                        <input type="number" class="size-qty" id="largeQty" min="0" value="0">
+                    </div>
+                    <div class="size-box" data-size="XL">
+                        <img src="XL.jpg" alt="XL">
+                        <div class="size-info">
+                            <div class="size-name">XL</div>
+                            <div>7kg Raw Weight</div>
+                            <div class="size-price">₱3300.00</div>
+                        </div>
+                        <label>Quantity:</label>
+                        <input type="number" class="size-qty" id="xlQty" min="0" value="0">
+                    </div>
+                    <div class="size-box" data-size="XXL">
+                        <img src="XXL.jpg" alt="XXL">
+                        <div class="size-info">
+                            <div class="size-name">XXL</div>
+                            <div>8kg Raw Weight</div>
+                            <div class="size-price">₱3800.00</div>
+                        </div>
+                        <label>Quantity:</label>
+                        <input type="number" class="size-qty" id="xxlQty" min="0" value="0">
+                    </div>
+                    <div class="size-box" data-size="XXXL">
+                        <img src="XXXL.jpg" alt="XXXL">
+                        <div class="size-info">
+                            <div class="size-name">XXXL</div>
+                            <div>11kg Raw Weight</div>
+                            <div class="size-price">₱4800.00</div>
+                        </div>
+                        <label>Quantity:</label>
+                        <input type="number" class="size-qty" id="xxxQty" min="0" value="0">
+                    </div>
+                </div>
+                
+                <div class="payment-note">
+                    <i class="fas fa-info-circle"></i> A down payment of 50% via GCash is required to confirm your order.
+                    <br>
+                    <i class="fas fa-exclamation-triangle" style="color: #FFD700;"></i> Please note that all orders are non-refundable. This policy is in place because we incur immediate processing and fulfillment costs upon purchase, and we are unable to recover these expenses once an order is placed.
+                </div>
+                
+                <button class="btn" id="proceedBtn"><i class="fas fa-arrow-right"></i> Proceed to Payment</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Payment Options Modal -->
+    <div class="modal" id="paymentOptionsModal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closePaymentOptionsModal()">&times;</span>
+            <div class="modal-header">
+                <h2><i class="fas fa-credit-card"></i> Payment Options</h2>
+            </div>
+            <div class="modal-body">
+                <p>Please select your preferred payment method:</p>
+                <div class="payment-options">
+                    <div class="payment-option" onclick="selectPaymentOption('downPayment')">
+                        <h3>Down Payment (50%)</h3>
+                        <p>Pay half now, the rest upon delivery</p>
+                    </div>
+                    <div class="payment-option" onclick="selectPaymentOption('fullPayment')">
+                        <h3>Full Payment</h3>
+                        <p>Pay the full amount now</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" id="confirmPaymentBtn" disabled>Confirm Payment Method</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Order Summary Modal -->
+    <div class="modal" id="orderModal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <div class="modal-header">
+                <h2><i class="fas fa-receipt"></i> Order Summary</h2>
+            </div>
+            <div class="modal-body">
+                <div class="order-summary-item">
+                    <span>Name:</span>
+                    <span id="modalReceiverName"></span>
+                </div>
+                <div class="order-summary-item">
+                    <span>Contact:</span>
+                    <span id="modalContactNumber"></span>
+                </div>
+                <div class="order-summary-item">
+                    <span>Email:</span>
+                    <span id="modalEmail"></span>
+                </div>
+                <div class="order-summary-item">
+                    <span>Delivery Date:</span>
+                    <span id="modalDate"></span>
+                </div>
+                <div class="order-summary-item">
+                    <span>Delivery Time:</span>
+                    <span id="modalTime"></span>
+                </div>
+                <div class="order-summary-item">
+                    <span>Address:</span>
+                    <span id="modaldeliveryAddress"></span>
+                </div>
+                <div class="order-summary-item">
+                    <span>Landmarks:</span>
+                    <span id="modalLandmarks"></span>
+                </div>
+                
+                <h3>Order Details:</h3>
+                <div id="modalSizes"></div>
+                
+                <div class="order-summary-item order-summary-total">
+                    <span>Total Amount:</span>
+                    <span id="modalTotal">₱0.00</span>
+                </div>
+                <div class="order-summary-item">
+                    <span>Amount to Pay:</span>
+                    <span id="modalAmountPaid">₱0.00</span>
+                </div>
+                
+                <div class="gcash-info">
+                    <h3><i class="fas fa-mobile-alt"></i> GCash Payment</h3>
+                    <p><strong>GCash No:</strong> 0907009979</p>
+                    <p><strong>Account Name:</strong> LY**J NA****M P.</p>
+                    <p>Please send the payment to the GCash number above and enter the reference number below.</p>
+                    <div class="qr-code-container">
+                        <img src="gcash-qr.jpg" alt="GCash QR Code" class="qr-code">
+                        <p class="qr-note">Scan QR code to pay</p>
+                    </div>
+                </div>
+                
+                <div class="reference-container">
+                    <label class="reference-label"><i class="fas fa-hashtag"></i> GCash Reference Number:</label>
+                    <input type="text" id="referenceNumber" placeholder="Enter GCash reference number" required>
+                    <div class="error-message" id="referenceNumberError">Please enter the GCash reference number</div>
+                </div>
+                
+                <div class="order-summary-item">
+                    <p><i class="fas fa-info-circle"></i> You'll receive a confirmation email once your order is processed.</p>
+                    <p><i class="fas fa-truck"></i> Free delivery in Pavia and nearby areas. Additional ₱13/km for farther locations.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" id="placeOrderBtn"><i class="fas fa-check-circle"></i> Place Order</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Success Modal -->
+    <div class="modal" id="successModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-check-circle" style="color: var(--success-color);"></i> Order Placed Successfully!</h2>
+            </div>
+            <div class="modal-body">
+                <div class="success-message">
+                    <p>Thank you for your order!</p>
+                    <p>We will send you a confirmation to your email shortly.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="redirectToHome()"><i class="fas fa-home"></i> Return to Home</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script>
+        // Global variables
+        let selectedPaymentType = '';
+        
+        // Initialize form validation
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set minimum date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('date').min = today;
+            
+            // Add event listeners for real-time validation
+            document.getElementById('receiverName').addEventListener('input', validateName);
+            document.getElementById('contactNumber').addEventListener('input', validateContact);
+            document.getElementById('email').addEventListener('input', validateEmail);
+            document.getElementById('date').addEventListener('change', validateDate);
+            document.getElementById('time').addEventListener('change', validateTime);
+            document.getElementById('deliveryAddress').addEventListener('input', validateAddress);
+            
+            // Proceed button click handler
+            document.getElementById('proceedBtn').addEventListener('click', validateForm);
+            
+            // Confirm payment button click handler
+            document.getElementById('confirmPaymentBtn').addEventListener('click', showOrderSummary);
+            
+            // Place order button click handler
+            document.getElementById('placeOrderBtn').addEventListener('click', placeOrder);
+            
+            // Image upload preview
+            document.getElementById('uploadImage').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        document.getElementById('uploadedImagePreview').src = event.target.result;
+                        document.getElementById('uploadedImagePreview').style.display = 'block';
+                        document.getElementById('uploadImageError').style.display = 'none';
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+            
+            // Highlight selected size boxes when quantity > 0
+            document.querySelectorAll('.size-qty').forEach(input => {
+                input.addEventListener('change', function() {
+                    const qty = parseInt(this.value);
+                    const sizeBox = this.closest('.size-box');
+                    if (qty > 0) {
+                        sizeBox.classList.add('active');
+                    } else {
+                        sizeBox.classList.remove('active');
+                    }
+                });
+            });
+        });
+        
+        // Validation functions
+        function validateName() {
+            const name = document.getElementById('receiverName');
+            const error = document.getElementById('receiverNameError');
+            const regex = /^[A-Za-z\s]+$/;
+            
+            if (!regex.test(name.value)) {
+                error.style.display = 'block';
+                return false;
+            } else {
+                error.style.display = 'none';
+                return true;
+            }
+        }
+        
+        function validateContact() {
+            const contact = document.getElementById('contactNumber');
+            const error = document.getElementById('contactNumberError');
+            const regex = /^[0-9]{10}$/;
+            
+            if (!regex.test(contact.value)) {
+                error.style.display = 'block';
+                return false;
+            } else {
+                error.style.display = 'none';
+                return true;
+            }
+        }
+        
+        function validateEmail() {
+            const email = document.getElementById('email');
+            const error = document.getElementById('emailError');
+            const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+            
+            if (!regex.test(email.value)) {
+                error.style.display = 'block';
+                return false;
+            } else {
+                error.style.display = 'none';
+                return true;
+            }
+        }
+        
+        function validateDate() {
+            const date = document.getElementById('date');
+            const error = document.getElementById('dateError');
+            
+            if (!date.value) {
+                error.style.display = 'block';
+                return false;
+            } else {
+                error.style.display = 'none';
+                return true;
+            }
+        }
+        
+        function validateTime() {
+            const time = document.getElementById('time');
+            const error = document.getElementById('timeError');
+            
+            if (!time.value) {
+                error.style.display = 'block';
+                return false;
+            } else {
+                error.style.display = 'none';
+                return true;
+            }
+        }
+        
+        function validateAddress() {
+            const address = document.getElementById('deliveryAddress');
+            const error = document.getElementById('deliveryAddressError');
+            
+            if (!address.value.trim()) {
+                error.style.display = 'block';
+                return false;
+            } else {
+                error.style.display = 'none';
+                return true;
+            }
+        }
+        
+        function validateQuantities() {
+            const quantities = [
+                parseInt(document.getElementById('midgetQty').value),
+                parseInt(document.getElementById('juniorQty').value),
+                parseInt(document.getElementById('smallQty').value),
+                parseInt(document.getElementById('mediumQty').value),
+                parseInt(document.getElementById('largeQty').value),
+                parseInt(document.getElementById('xlQty').value),
+                parseInt(document.getElementById('xxlQty').value),
+                parseInt(document.getElementById('xxxQty').value)
+            ];
+            
+            return quantities.some(qty => qty > 0);
+        }
+        
+        // Main form validation
+        function validateForm() {
+            const isValid = (
+                validateName() &&
+                validateContact() &&
+                validateEmail() &&
+                validateDate() &&
+                validateTime() &&
+                validateAddress() &&
+                validateQuantities()
+            );
+            
+            if (isValid) {
+                showPaymentOptionsModal();
+            } else {
+                scrollToFirstError();
+                if (!validateQuantities()) {
+                    alert('Please select at least one size to order.');
+                }
+            }
+        }
+        
+        // Scroll to first error field
+        function scrollToFirstError() {
+            const firstError = document.querySelector('.error-message[style="display: block;"]');
+            if (firstError) {
+                firstError.previousElementSibling.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
+                });
+                firstError.previousElementSibling.focus();
+            }
+        }
+        
+        // Payment option selection
+        function selectPaymentOption(type) {
+            selectedPaymentType = type;
+            document.querySelectorAll('.payment-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            event.currentTarget.classList.add('selected');
+            document.getElementById('confirmPaymentBtn').disabled = false;
+        }
+        
+        // Show payment options modal
+        function showPaymentOptionsModal() {
+            document.getElementById('paymentOptionsModal').style.display = 'flex';
+        }
+        
+        // Close payment options modal
+        function closePaymentOptionsModal() {
+            document.getElementById('paymentOptionsModal').style.display = 'none';
+        }
+        
+        // Show order summary modal
+        function showOrderSummary() {
+            if (!selectedPaymentType) {
+                alert('Please select a payment option');
+                return;
+            }
+            
+            closePaymentOptionsModal();
+            
+            // Get form values
+            const receiverName = document.getElementById('receiverName').value;
+            const contactNumber = document.getElementById('contactNumber').value;
+            const email = document.getElementById('email').value;
+            const date = document.getElementById('date').value;
+            const time = document.getElementById('time').value;
+            const deliveryAddress = document.getElementById('deliveryAddress').value;
+            const landmarks = document.getElementById('landmarks').value;
+            
+            // Get sizes and quantities
+            const sizes = [
+                { name: 'Midget', price: 1000, qty: parseInt(document.getElementById('midgetQty').value) },
+                { name: 'Junior', price: 1700, qty: parseInt(document.getElementById('juniorQty').value) },
+                { name: 'Small', price: 2000, qty: parseInt(document.getElementById('smallQty').value) },
+                { name: 'Medium', price: 2500, qty: parseInt(document.getElementById('mediumQty').value) },
+                { name: 'Large', price: 3000, qty: parseInt(document.getElementById('largeQty').value) },
+                { name: 'XL', price: 3300, qty: parseInt(document.getElementById('xlQty').value) },
+                { name: 'XXL', price: 3800, qty: parseInt(document.getElementById('xxlQty').value) },
+                { name: 'XXXL', price: 4800, qty: parseInt(document.getElementById('xxxQty').value) }
+            ];
+            
+            // Calculate total and build order items
+            let total = 0;
+            let orderItems = '';
+            
+            sizes.forEach(size => {
+                if (size.qty > 0) {
+                    total += size.qty * size.price;
+                    orderItems += `<div class="order-summary-item">
+                        <span>${size.name} x${size.qty}</span>
+                        <span>₱${(size.qty * size.price).toLocaleString()}</span>
+                    </div>`;
+                }
+            });
+            
+            // Calculate amount to pay based on payment type
+            const amountToPay = selectedPaymentType === 'downPayment' ? total * 0.5 : total;
+            
+            // Update modal content
+            document.getElementById('modalReceiverName').textContent = receiverName;
+            document.getElementById('modalContactNumber').textContent = `+63${contactNumber}`;
+            document.getElementById('modalEmail').textContent = email;
+            document.getElementById('modalDate').textContent = date;
+            document.getElementById('modalTime').textContent = time;
+            document.getElementById('modaldeliveryAddress').textContent = deliveryAddress;
+            document.getElementById('modalLandmarks').textContent = landmarks || 'None';
+            document.getElementById('modalSizes').innerHTML = orderItems;
+            document.getElementById('modalTotal').textContent = `₱${total.toLocaleString()}`;
+            document.getElementById('modalAmountPaid').textContent = `₱${amountToPay.toLocaleString()}`;
+            
+            // Show the modal
+            document.getElementById('orderModal').style.display = 'flex';
+        }
+        
+        // Close order modal
+        function closeModal() {
+            document.getElementById('orderModal').style.display = 'none';
+            document.getElementById('uploadedImagePreview').style.display = 'none';
+            document.getElementById('uploadImage').value = '';
+        }
+        
+        // Place order function
+        async function placeOrder() {
+            // Validate reference number
+            const referenceNumber = document.getElementById('referenceNumber');
+            if (!referenceNumber.value.trim()) {
+                document.getElementById('referenceNumberError').style.display = 'block';
+                return;
+            }
+
+            try {
+                // Get form values
+                const receiverName = document.getElementById('receiverName').value;
+                const contactNumber = document.getElementById('contactNumber').value;
+                const email = document.getElementById('email').value;
+                const date = document.getElementById('date').value;
+                const time = document.getElementById('time').value;
+                const deliveryAddress = document.getElementById('deliveryAddress').value;
+                const landmarks = document.getElementById('landmarks').value;
+                
+                // Get sizes and quantities
+                const sizes = [
+                    { name: 'Midget', qty: parseInt(document.getElementById('midgetQty').value) },
+                    { name: 'Junior', qty: parseInt(document.getElementById('juniorQty').value) },
+                    { name: 'Small', qty: parseInt(document.getElementById('smallQty').value) },
+                    { name: 'Medium', qty: parseInt(document.getElementById('mediumQty').value) },
+                    { name: 'Large', qty: parseInt(document.getElementById('largeQty').value) },
+                    { name: 'XL', qty: parseInt(document.getElementById('xlQty').value) },
+                    { name: 'XXL', qty: parseInt(document.getElementById('xxlQty').value) },
+                    { name: 'XXXL', qty: parseInt(document.getElementById('xxxQty').value) }
+                ];
+                
+                // Build order string and calculate total
+                let orderItems = [];
+                let total = 0;
+                
+                sizes.forEach(size => {
+                    if (size.qty > 0) {
+                        const price = getPriceForSize(size.name);
+                        total += size.qty * price;
+                        orderItems.push(`${size.name} x ${size.qty}`);
+                    }
+                });
+                
+                // Calculate amount paid and balance
+                const amountPaid = selectedPaymentType === 'downPayment' ? total * 0.5 : total;
+                const balance = total - amountPaid;
+                
+                // Create order object
+                const order = {
+                    transaction_id: generateTransactionId(),
+                    name: receiverName,
+                    contact: contactNumber,
+                    email: email,
+                    date: date,
+                    time: time,
+                    address: deliveryAddress,
+                    landmarks: landmarks || 'None',
+                    order_items: orderItems.join(', '),
+                    payment_proof: referenceNumber.value.trim(),
+                    payment_type: selectedPaymentType,
+                    status: 'Pending',
+                    total_price: total,
+                    paid_amount: amountPaid,
+                    balance: balance
+                };
+                
+                // Save to Supabase
+                const { data: savedOrder, error } = await supabase
+                    .from('orders')
+                    .insert([order])
+                    .select()
+                    .single();
+
+                if (error) {
+                    console.error('Supabase error:', error);
+                    throw new Error(error.message);
+                }
+
+                if (!savedOrder) {
+                    throw new Error('Failed to save order');
+                }
+                
+                // Show success message
+                document.getElementById('orderModal').style.display = 'none';
+                document.getElementById('successModal').style.display = 'flex';
+                
+                // Reset form fields
+                document.getElementById('receiverName').value = '';
+                document.getElementById('contactNumber').value = '';
+                document.getElementById('email').value = '';
+                document.getElementById('date').value = '';
+                document.getElementById('time').value = '';
+                document.getElementById('deliveryAddress').value = '';
+                document.getElementById('landmarks').value = '';
+                document.getElementById('referenceNumber').value = '';
+                
+                // Reset quantities
+                document.querySelectorAll('.size-qty').forEach(input => {
+                    input.value = '0';
+                    input.closest('.size-box').classList.remove('active');
+                });
+                
+            } catch (error) {
+                console.error('Error placing order:', error);
+                alert(`Error: ${error.message}. Please try again.`);
+            }
+        }
+        
+        // Helper function to get price for size
+        function getPriceForSize(size) {
+            const prices = {
+                'Midget': 1000,
+                'Junior': 1700,
+                'Small': 2000,
+                'Medium': 2500,
+                'Large': 3000,
+                'XL': 3300,
+                'XXL': 3800,
+                'XXXL': 4800
+            };
+            return prices[size];
+        }
+        
+        // Add this helper function to generate a formatted transaction ID
+        function generateTransactionId() {
+            const now = new Date();
+            const year = now.getFullYear().toString().slice(-2);
+            const month = (now.getMonth() + 1).toString().padStart(2, '0');
+            const day = now.getDate().toString().padStart(2, '0');
+            const randomNum = Math.floor(1000 + Math.random() * 9000);
+            return `LL-${year}${month}${day}-${randomNum}`;
+        }
+        
+        // Redirect to home after successful order
+        function redirectToHome() {
+            window.location.href = 'index.html';
+        }
+        
+        // Close modals when clicking outside
+        window.addEventListener('click', function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'937d8ad52b678831',t:'MTc0NTkxNjUyNi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

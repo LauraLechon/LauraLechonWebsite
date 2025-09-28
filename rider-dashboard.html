@@ -1,0 +1,1945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rider Dashboard - Laura Lechon</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Load shared Supabase initialization -->
+    <script src="supabase-config.js"></script>
+    <script>
+        // Initialize Supabase client
+        document.addEventListener('DOMContentLoaded', function() {
+            const supabaseUrl = 'https://bugccvyjkxevyfesivkb.supabase.co';
+            const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1Z2Njdnlqa3hldnlmZXNpdmtiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU5NDI2OTIsImV4cCI6MjA2MTUxODY5Mn0.pr1GyDAKPIi4-1Jvym8DPG5AndOI5qYu44RbxeQuQ0Y';
+
+            // Only create the client if not already initialized by supabase-config.js
+            if (!(window.supabase && typeof window.supabase.from === 'function')) {
+                window.supabase = supabase.createClient(supabaseUrl, supabaseKey, {
+                    auth: {
+                        autoRefreshToken: true,
+                        persistSession: true,
+                        detectSessionInUrl: true
+                    },
+                    global: {
+                        headers: {
+                            'x-admin-session-id': localStorage.getItem('adminSessionId') || '',
+                            'x-rider-session-id': localStorage.getItem('riderSessionId') || ''
+                        }
+                    }
+                });
+            }
+            
+            console.log('Supabase client initialized');
+
+            // Listen for storage changes to handle session updates
+            window.addEventListener('storage', function(e) {
+                if (e.key === 'adminSessionId' || e.key === 'riderSessionId') {
+                    // Instead of trying to update headers, we'll refresh the page to get fresh headers
+                    // This is more reliable than trying to update headers on the fly
+                    window.location.reload();
+                }
+            });
+        });
+        
+        // Helper function to get the Supabase client
+        function getSupabase() {
+            if (!window.supabase) {
+                console.error('Supabase client not initialized');
+                throw new Error('Supabase client not initialized');
+            }
+            // Return the existing client instance
+            // Headers are already set during initialization
+            return window.supabase;
+        }
+
+        // Database connection test function
+        async function testDatabaseConnection() {
+            try {
+                console.log('Testing database connection...');
+                const supabase = getSupabase();
+
+                // Test basic connection by querying a simple table
+                const { data, error } = await supabase
+                    .from('orders')
+                    .select('id')
+                    .limit(1);
+
+                if (error) {
+                    console.error('Database connection test failed:', {
+                        message: error.message,
+                        details: error.details,
+                        hint: error.hint,
+                        code: error.code
+                    });
+                    return false;
+                }
+
+                console.log('Database connection test successful');
+                return true;
+            } catch (error) {
+                console.error('Database connection test error:', error.message || error);
+                return false;
+            }
+        }
+    </script>
+    <script src="https://smtpjs.com/v3/smtp.js"></script>
+    <style>
+        :root {
+            --primary-color: #1d3a6b;
+            --secondary-color: #e6f3f7;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --light-color: #f8f9fa;
+            --dark-color: #343a40;
+            --text-color: #333;
+            --text-light: #6c757d;
+        }
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f5f7fa;
+            margin: 0;
+            padding: 0;
+            color: var(--text-color);
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 100vw;
+            margin: 0 auto;
+            padding: 0 0 20px 0;
+        }
+        
+        .header {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            background-color: var(--primary-color);
+            padding: 15px 10px;
+            border-radius: 0 0 10px 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 15px;
+            color: white;
+        }
+        
+        .dashboard-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin: 0 0 10px 0;
+        }
+        
+        .logout-btn {
+            background: white;
+            color: var(--primary-color);
+            border: none;
+            padding: 12px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            width: 100%;
+            font-size: 16px;
+        }
+        
+        .logout-btn:hover {
+            background: #f0f0f0;
+            transform: translateY(-2px);
+        }
+        
+        .card {
+            background: white;
+            padding: 18px 10px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            margin-bottom: 18px;
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-top: 0;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--secondary-color);
+        }
+        
+        .info-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .info-item {
+            margin-bottom: 2px;
+        }
+        
+        .info-label {
+            font-weight: 500;
+            color: var(--primary-color);
+            font-size: 13px;
+            margin-bottom: 2px;
+        }
+        
+        .info-value {
+            font-size: 15px;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 7px 14px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            text-transform: capitalize;
+        }
+        
+        .status-available {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-delivery {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-not-available {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .order-card {
+            background: white;
+            padding: 14px 8px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            margin-bottom: 0;
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        .order-header {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .order-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin: 0 0 5px 0;
+        }
+        
+        .order-status {
+            padding: 7px 14px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            text-transform: capitalize;
+        }
+        
+        .status-preparing {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-delivery {
+            background: #cce5ff;
+            color: #004085;
+        }
+        
+        .status-delivered {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .order-details {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+        
+        .detail-row {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+        }
+        
+        .detail-label {
+            font-weight: 500;
+            color: var(--text-light);
+            font-size: 13px;
+            flex: 1 1 50%;
+        }
+        
+        .detail-value {
+            word-break: break-word;
+            font-size: 14px;
+            flex: 1 1 50%;
+            text-align: right;
+        }
+        
+        .order-items {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 6px;
+        }
+        
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .order-item:last-child {
+            border-bottom: none;
+        }
+        
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        
+        .btn {
+            padding: 14px 0;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            font-size: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+        
+        .btn i {
+            margin-right: 6px;
+        }
+        
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2c4d8b;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn-success {
+            background: var(--success-color);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn-warning {
+            background: var(--warning-color);
+            color: var(--dark-color);
+        }
+        
+        .btn-warning:hover {
+            background: #e0a800;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .no-orders {
+            text-align: center;
+            padding: 30px 10px;
+            color: var(--text-light);
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+        
+        .no-orders i {
+            font-size: 36px;
+            color: #ddd;
+            margin-bottom: 10px;
+        }
+        
+        .payment-proof {
+            display: none;
+        }
+        
+        .modal {
+            display: none;
+        }
+        
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 13px;
+            background: white;
+            border-radius: 10px;
+            overflow: auto;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            display: block;
+        }
+        
+        .history-table th, .history-table td {
+            padding: 10px 8px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+            min-width: 100px;
+        }
+        
+        .history-table th {
+            background: var(--primary-color);
+            color: white;
+            font-weight: 500;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+        
+        .history-table tr:hover {
+            background-color: rgba(0,0,0,0.02);
+        }
+        
+        .history-table .status-delivered {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-toggle {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+        
+        .status-btn {
+            padding: 14px 0;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            font-size: 16px;
+            width: 100%;
+        }
+        
+        .available-btn {
+            background: var(--success-color);
+            color: white;
+        }
+        
+        .available-btn:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .delivery-btn {
+            background: var(--warning-color);
+            color: var(--dark-color);
+        }
+        
+        .delivery-btn:hover {
+            background: #e0a800;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .not-available-btn {
+            background: var(--danger-color);
+            color: white;
+        }
+        
+        .not-available-btn:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .section-title i {
+            margin-right: 8px;
+            font-size: 20px;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-left: 8px;
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .assigned-orders-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        /* Notification styles remain unchanged */
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .notification {
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            background-color: var(--success-color);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            animation: slideIn 0.3s, fadeOut 0.5s 2.5s forwards;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 220px;
+            max-width: 90vw;
+            opacity: 0;
+            transform: translateX(100%);
+        }
+        
+        .notification.error {
+            background-color: var(--danger-color);
+        }
+        
+        .notification.warning {
+            background-color: var(--warning-color);
+            color: var(--dark-color);
+        }
+        
+        .notification.info {
+            background-color: var(--primary-color);
+        }
+        
+        .notification i {
+            font-size: 1.2rem;
+        }
+        
+        .notification .message {
+            flex: 1;
+            font-size: 0.9rem;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        
+        /* Responsive adjustments for larger screens */
+        @media (min-width: 600px) {
+            .container {
+                max-width: 600px;
+                padding: 0 20px 20px 20px;
+            }
+            .header {
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+                padding: 15px 25px;
+            }
+            .dashboard-title {
+                font-size: 24px;
+            }
+            .logout-btn {
+                width: auto;
+                font-size: 16px;
+                padding: 8px 16px;
+            }
+            .card {
+                padding: 25px;
+                margin-bottom: 25px;
+            }
+            .card-title {
+                font-size: 20px;
+                margin-bottom: 20px;
+                padding-bottom: 10px;
+            }
+            .info-grid {
+                flex-direction: row;
+                flex-wrap: wrap;
+                gap: 20px;
+            }
+            .info-item {
+                min-width: 200px;
+            }
+            .order-header {
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+            }
+            .order-title {
+                font-size: 18px;
+            }
+            .order-details {
+                flex-direction: row;
+                flex-wrap: wrap;
+                gap: 10px 20px;
+            }
+            .detail-row {
+                flex: 1 1 45%;
+            }
+            .action-buttons {
+                flex-direction: row;
+                gap: 12px;
+            }
+            .btn, .status-btn {
+                width: auto;
+                font-size: 14px;
+                padding: 10px 18px;
+            }
+            .status-toggle {
+                flex-direction: row;
+                gap: 12px;
+            }
+            .assigned-orders-grid {
+                flex-direction: row;
+                flex-wrap: wrap;
+                gap: 20px;
+            }
+            .history-table {
+                font-size: 14px;
+                min-width: 100%;
+            }
+        }
+        
+        .order-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            padding: 15px;
+            margin-bottom: 10px;
+            z-index: 1000;
+            min-width: 300px;
+            max-width: 400px;
+            animation: slideIn 0.3s ease;
+        }
+        
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .notification-header h3 {
+            margin: 0;
+            color: var(--primary-color);
+            font-size: 16px;
+        }
+        
+        .close-notification {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: var(--text-light);
+        }
+        
+        .notification-content {
+            margin-bottom: 15px;
+        }
+        
+        .notification-content p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        
+        .notification-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .accept-btn, .decline-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            flex: 1;
+        }
+        
+        .accept-btn {
+            background: var(--success-color);
+            color: white;
+        }
+        
+        .decline-btn {
+            background: var(--danger-color);
+            color: white;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1 class="dashboard-title">Rider Dashboard</h1>
+            <button class="logout-btn" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </div>
+        
+        <!-- Rider Information -->
+        <div class="card">
+            <h2 class="card-title"><i class="fas fa-user"></i> My Information</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Name</div>
+                    <div class="info-value" id="riderName">-</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Contact</div>
+                    <div class="info-value" id="riderContact">-</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Email</div>
+                    <div class="info-value" id="riderEmail">-</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Vehicle</div>
+                    <div class="info-value" id="riderVehicle">-</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Plate Number</div>
+                    <div class="info-value" id="riderPlate">-</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Status</div>
+                    <div class="info-value">
+                        <span id="riderStatus" class="status-badge status-available">Available</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Status Toggle -->
+        <div class="status-toggle">
+            <button id="availableBtn" class="status-btn available-btn" onclick="updateRiderStatus('Available')">
+                <i class="fas fa-check-circle"></i> Set as Available
+            </button>
+            <button id="deliveryBtn" class="status-btn delivery-btn" onclick="updateRiderStatus('On Delivery')">
+                <i class="fas fa-motorcycle"></i> Set as On Delivery
+            </button>
+            <button id="notAvailableBtn" class="status-btn not-available-btn" onclick="updateRiderStatus('Not Available')">
+                <i class="fas fa-times-circle"></i> Set as Not Available
+            </button>
+        </div>
+        
+        <!-- Current Assignments -->
+        <div class="card">
+            <h2 class="card-title"><i class="fas fa-tasks"></i> Current Assignments</h2>
+            <div id="assignedOrdersContainer">
+                <!-- Order cards will be dynamically added here -->
+            </div>
+        </div>
+        
+        <!-- Delivery History -->
+        <div class="card">
+            <h2 class="card-title"><i class="fas fa-history"></i> Delivery History</h2>
+            <div class="table-responsive">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Customer</th>
+                            <th>Contact</th>
+                            <th>Address</th>
+                            <th>Items</th>
+                            <th>Date Delivered</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody">
+                        <!-- Will be populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add this before the closing </body> tag -->
+    <div class="notification-container" id="notificationContainer"></div>
+    
+    <script>
+        // Global variables
+        let currentRider = null;
+        
+        // Initialize the application when the DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.group('DOMContentLoaded');
+            try {
+                console.log('1. DOM fully loaded');
+                
+                // First, check if we have a valid session
+                console.log('2. Checking rider session');
+                // Add a small initial delay to allow the session insert to propagate after login
+                await new Promise(r => setTimeout(r, 600));
+                const isAuthenticated = await checkRiderSession({ firstLoad: true });
+                console.log('3. Session check result:', isAuthenticated);
+                
+                if (!isAuthenticated) {
+                    console.log('4. Not authenticated, redirecting to login');
+                    if (!window.location.pathname.endsWith('rider-login.html')) {
+                        window.location.href = 'rider-login.html';
+                    }
+                    return;
+                }
+                
+                console.log('6. Setting up periodic checks');
+                // Clear any existing intervals first
+                clearAllIntervals();
+                
+                // Set up periodic checks
+                const sessionCheckInterval = setInterval(checkRiderSession, 30000);
+                const ordersCheckInterval = setInterval(loadAssignedOrders, 10000);
+                const notificationsInterval = setInterval(checkForNewNotifications, 30000);
+                
+                // Store interval IDs for cleanup
+                window.riderIntervals = window.riderIntervals || [];
+                window.riderIntervals.push(
+                    sessionCheckInterval, 
+                    ordersCheckInterval, 
+                    notificationsInterval
+                );
+                
+                // Test database connection
+                console.log('7. Testing database connection');
+                const dbTestResult = await testDatabaseConnection();
+                if (!dbTestResult) {
+                    console.warn('Database connection test failed - some features may not work properly');
+                    showNotification('Database connection issue detected. Some features may not work properly.', 'warning');
+                }
+                
+                // Initialize the dashboard
+                console.log('8. Initializing dashboard');
+                await initializeDashboard({ firstLoad: true });
+                
+                console.log('9. Dashboard initialization complete');
+                // Mark app as initialized to avoid duplicate loaders
+                window.riderAppInitialized = true;
+            } catch (error) {
+                console.error('10. Failed to initialize application:', error);
+                showNotification('Failed to initialize application. Please refresh the page.', 'error');
+                
+                // Only redirect if not already on login page
+                if (!window.location.pathname.endsWith('rider-login.html')) {
+                    window.location.href = 'rider-login.html';
+                }
+            } finally {
+                console.groupEnd();
+            }
+        });
+
+        // Function to check and verify rider session
+        async function checkRiderSession(options = { firstLoad: false }) {
+            console.group('checkRiderSession');
+            console.log('1. Starting session validation');
+            
+            // Check sessionStorage first (from current login)
+            let sessionId = sessionStorage.getItem('riderSessionId');
+            let savedRider = sessionStorage.getItem('riderData');
+            let source = 'sessionStorage';
+            
+            // Fall back to localStorage if not found in sessionStorage
+            if (!sessionId) {
+                console.log('2. No session ID in sessionStorage, checking localStorage');
+                sessionId = localStorage.getItem('riderSessionId');
+                savedRider = localStorage.getItem('riderData');
+                source = 'localStorage';
+            }
+            
+            console.log(`3. Using session from ${source}, ID:`, sessionId);
+            
+            // If we have a saved rider but no session, try to use it
+            if (savedRider && !sessionId) {
+                try {
+                    currentRider = JSON.parse(savedRider);
+                    console.log('3.1 Using saved rider data from', source);
+                    console.groupEnd();
+                    return true;
+                } catch (e) {
+                    console.error('3.2 Error parsing saved rider data:', e);
+                    sessionStorage.removeItem('riderData');
+                    localStorage.removeItem('riderData');
+                }
+            }
+            
+            if (!sessionId) {
+                console.log('4. No session ID found in localStorage');
+                console.groupEnd();
+                return false;
+            }
+
+            try {
+                console.log('5. Checking if Supabase is initialized');
+                if (!window.supabase) {
+                    console.error('5.1 Supabase client not initialized');
+                    // Try to initialize Supabase if not already done
+                    try {
+                        const supabaseUrl = 'https://bugccvyjkxevyfesivkb.supabase.co';
+                        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1Z2Njdnlqa3hldnlmZXNpdmtiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU5NDI2OTIsImV4cCI6MjA2MTUxODY5Mn0.pr1GyDAKPIi4-1Jvym8DPG5AndOI5qYu44RbxeQuQ0Y';
+                        window.supabase = supabase.createClient(supabaseUrl, supabaseKey, {
+                            auth: {
+                                autoRefreshToken: true,
+                                persistSession: true,
+                                detectSessionInUrl: true
+                            }
+                        });
+                        console.log('5.2 Supabase client initialized successfully');
+                    } catch (e) {
+                        console.error('5.2 Failed to initialize Supabase:', e);
+                        throw new Error('Failed to initialize Supabase client');
+                    }
+                }
+
+                console.log('6. Querying Supabase for session data');
+                // First, get the session to verify it exists and is not expired
+                let session, sessionError;
+                // Retry to handle potential read-after-write propagation delay after login
+                const maxRetries = options.firstLoad ? 10 : 5;
+                const retryDelayMs = options.firstLoad ? 500 : 300;
+                for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                    try {
+                        console.log(`6.${attempt} Executing Supabase query for session (attempt ${attempt}/${maxRetries}):`, sessionId);
+                        const response = await window.supabase
+                            .from('rider_sessions')
+                            .select('*')
+                            .eq('id', sessionId)
+                            .single();
+
+                        session = response.data;
+                        sessionError = response.error;
+
+                        console.log('7. Supabase session response:', {
+                            data: session,
+                            error: sessionError,
+                            status: response.status,
+                            statusText: response.statusText
+                        });
+
+                        if (sessionError) {
+                            // If it's a "row not found" type error, retry; otherwise, throw immediately
+                            const msg = (sessionError.message || '').toLowerCase();
+                            if (msg.includes('row') && msg.includes('not') && msg.includes('found')) {
+                                throw new Error('RETRYABLE_NOT_FOUND');
+                            }
+                            throw new Error(sessionError.message || 'Failed to query session');
+                        }
+
+                        if (!session) {
+                            throw new Error('RETRYABLE_NOT_FOUND');
+                        }
+
+                        // Success; break out of retry loop
+                        break;
+                    } catch (error) {
+                        if (error && error.message === 'RETRYABLE_NOT_FOUND' && attempt < maxRetries) {
+                            console.warn(`7.${attempt} Session not yet visible, retrying shortly...`);
+                            await new Promise(r => setTimeout(r, retryDelayMs));
+                            continue;
+                        }
+                        console.error('7.9 Error in session validation during attempt:', error);
+                        // Do not clear storage here; we'll clear only after all retries fail
+                        throw new Error(error.message || 'Session validation failed');
+                    }
+                }
+
+                if (sessionError || !session) {
+                    console.error('8. Session error or not found:', { sessionError, hasSession: !!session });
+                    // If it's first load and we have saved rider data, proceed optimistically to avoid bounce
+                    if (options.firstLoad && savedRider) {
+                        try {
+                            currentRider = JSON.parse(savedRider);
+                            console.warn('8.1 Proceeding with saved rider data on first load despite missing session (optimistic start)');
+                            console.groupEnd();
+                            return true;
+                        } catch (e) {
+                            console.error('8.2 Failed to parse saved rider data on first load:', e);
+                        }
+                    }
+                    // Now that retries have been exhausted and no fallback, clear invalid session data
+                    sessionStorage.removeItem('riderSessionId');
+                    localStorage.removeItem('riderSessionId');
+                    throw new Error('Invalid session');
+                }
+
+                // Check if session is expired
+                const expiresAt = new Date(session.expires_at);
+                const now = new Date();
+                console.log('9. Session expiration check:', {
+                    expiresAt,
+                    now,
+                    isExpired: expiresAt < now,
+                    isInvalidDate: isNaN(expiresAt.getTime())
+                });
+                
+                // Be lenient on first load if expires_at is missing/invalid; treat as valid
+                if (!options.firstLoad && isNaN(expiresAt.getTime())) {
+                    console.warn('10. expires_at is invalid, but continuing due to non-first load leniency');
+                }
+
+                if (!isNaN(expiresAt.getTime()) && expiresAt < now) {
+                    console.error('10. Session has expired');
+                    sessionStorage.removeItem('riderSessionId');
+                    localStorage.removeItem('riderSessionId');
+                    throw new Error('Session expired');
+                }
+
+                // Now get the rider data separately to avoid join issues
+                console.log('11. Fetching rider data for rider_id:', session.rider_id);
+                let riderData, riderError;
+                try {
+                    const response = await window.supabase
+                        .from('riders')
+                        .select('*')
+                        .eq('id', session.rider_id)
+                        .single();
+                    
+                    riderData = response.data;
+                    riderError = response.error;
+                    console.log('12. Rider data response:', { riderData, riderError });
+                } catch (error) {
+                    console.error('12. Error fetching rider data:', error);
+                    throw new Error('Failed to fetch rider data');
+                }
+
+                if (riderError || !riderData) {
+                    console.error('13. Rider data not found:', { riderError, hasRider: !!riderData });
+                    localStorage.removeItem('riderSessionId');
+                    throw new Error('Rider data not found');
+                }
+
+                try {
+                    // Update last active timestamp
+                    console.log('13. Updating session last active time');
+                    const supabase = getSupabase();
+                    const response = await supabase
+                        .from('rider_sessions')
+                        .update({ 
+                            last_active: new Date().toISOString(),
+                            expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+                        })
+                        .eq('id', sessionId);
+
+                    if (response.error) {
+                        console.warn('14. Failed to update session timestamp:', response.error);
+                        // Don't fail the entire session check just because update failed
+                    } else {
+                        console.log('14. Session timestamp updated successfully');
+                    }
+                } catch (updateError) {
+                    console.warn('10. Error updating session timestamp:', updateError);
+                    // Continue even if update fails
+                }
+
+                // Store rider data from the separate rider query
+                console.log('14.1 Raw rider data:', JSON.stringify(riderData, null, 2));
+                
+                currentRider = {
+                    id: riderData.id,
+                    name: riderData.name || 'Unknown Rider',
+                    email: riderData.email || 'No email',
+                    contact: riderData.contact || 'No contact',
+                    vehicle_type: riderData.vehicle_type || 'Not specified',
+                    plate_number: riderData.plate_number || 'N/A',
+                    status: riderData.status || 'Available'
+                };
+                
+                console.log('11. Current rider set to:', currentRider);
+                console.groupEnd();
+                return true;
+
+            } catch (error) {
+                console.error('12. Session validation failed:', error);
+                console.log('13. Removing invalid session ID from localStorage');
+                localStorage.removeItem('riderSessionId');
+                console.groupEnd();
+                
+                // Only redirect if not already on login page
+                if (!window.location.pathname.endsWith('rider-login.html')) {
+                    window.location.href = 'rider-login.html';
+                }
+                return false;
+            }
+        }
+
+        // Function to logout
+        async function logout() {
+            console.group('Logout Process');
+            console.log('1. Logout initiated');
+            
+            const sessionId = localStorage.getItem('riderSessionId');
+            
+            // Clear all intervals to prevent memory leaks
+            clearAllIntervals();
+            
+            if (sessionId) {
+                console.log('2. Found session ID, attempting to update session status');
+                try {
+                    // Try to update the session as inactive in the database
+                    if (window.supabase) {
+                        console.log('3. Updating session status in database');
+                        const { error } = await window.supabase
+                            .from('rider_sessions')
+                            .update({ 
+                                is_active: false,
+                                expires_at: new Date().toISOString() // Expire immediately
+                            })
+                            .eq('id', sessionId);
+                            
+                        if (error) {
+                            console.error('4. Error updating session status:', error);
+                        } else {
+                            console.log('4. Successfully updated session status');
+                        }
+                    }
+                } catch (error) {
+                    console.error('5. Error during logout cleanup:', error);
+                }
+            } else {
+                console.log('2. No active session found');
+            }
+            
+            // Clear all local storage related to the rider
+            console.log('6. Clearing local storage');
+            ['riderSessionId', 'currentRider'].forEach(key => {
+                localStorage.removeItem(key);
+            });
+            
+            // Clear the current rider data
+            currentRider = null;
+            
+            console.log('7. Redirecting to login page');
+            console.groupEnd();
+            
+            // Redirect to login page
+            window.location.href = 'rider-login.html';
+        }
+
+        // Update your existing functions to use currentRider instead of localStorage
+        async function updateRiderStatus(newStatus) {
+            if (!currentRider) {
+                console.error('No current rider when updating status');
+                return;
+            }
+            
+            try {
+                console.log(`Updating rider ${currentRider.id} status to:`, newStatus);
+                const response = await window.supabase
+                    .from('riders')
+                    .update({ status: newStatus })
+                    .eq('id', currentRider.id);
+
+                if (response.error) {
+                    console.error('Error updating status:', response.error);
+                    throw response.error;
+                }
+
+                // Update local state
+                currentRider.status = newStatus;
+                
+                // Update UI
+                const statusElement = document.getElementById('riderStatus');
+                if (statusElement) {
+                    statusElement.textContent = newStatus;
+                    // Update status badge class
+                    statusElement.className = `status-badge ${newStatus.toLowerCase().replace(' ', '-')}`;
+                }
+                
+                showNotification(`Status updated to ${newStatus}`, 'success');
+                
+                // Refresh rider info to ensure consistency
+                await loadRiderInfo();
+                
+            } catch (error) {
+                console.error('Error updating rider status:', error);
+                showNotification('Failed to update status', 'error');
+            }
+        }
+
+        // Load and display rider information
+        async function loadRiderInfo() {
+            try {
+                if (!currentRider) {
+                    console.error('No rider data available in loadRiderInfo');
+                    return;
+                }
+
+                console.log('Loading rider info for:', currentRider.id);
+                const response = await window.supabase
+                    .from('riders')
+                    .select('*')
+                    .eq('id', currentRider.id)
+                    .single();
+
+                if (response.error) {
+                    console.error('Error loading rider info:', response.error);
+                    throw response.error;
+                }
+
+                const rider = response.data;
+                console.log('Rider data loaded:', rider);
+
+                // Update the current rider with fresh data
+                currentRider = {
+                    ...currentRider,
+                    ...rider,
+                    status: rider.status || 'Available'
+                };
+
+                console.log('Loading rider info for:', currentRider);
+                
+                // Safely update the UI with rider data
+                const safeSetText = (elementId, value, defaultValue = 'N/A') => {
+                    const element = document.getElementById(elementId);
+                    if (element) {
+                        element.textContent = value !== undefined && value !== null ? value : defaultValue;
+                    }
+                };
+
+                safeSetText('riderName', currentRider.name, 'Unknown Rider');
+                safeSetText('riderEmail', currentRider.email, 'No email');
+                safeSetText('riderContact', currentRider.contact, 'No contact');
+                safeSetText('riderVehicle', currentRider.vehicle_type, 'Not specified');
+                safeSetText('riderPlate', currentRider.plate_number, 'N/A');
+                
+                // Set default status if not provided
+                currentRider.status = currentRider.status || 'Available';
+                safeSetText('riderStatus', currentRider.status);
+                
+                // Update status badge
+                const statusBadge = document.getElementById('riderStatus');
+                if (statusBadge) {
+                    statusBadge.className = 'status-badge';
+                    const status = (currentRider.status || '').toLowerCase();
+                    
+                    // Remove all status classes first
+                    statusBadge.classList.remove(
+                        'status-available', 
+                        'status-delivery', 
+                        'status-not-available'
+                    );
+                    
+                    // Add the appropriate status class
+                    if (status.includes('delivery')) {
+                        statusBadge.classList.add('status-delivery');
+                    } else if (status.includes('not') || status.includes('unavailable')) {
+                        statusBadge.classList.add('status-not-available');
+                    } else {
+                        statusBadge.classList.add('status-available');
+                    }
+                }
+            } catch (error) {
+                console.error('Error in loadRiderInfo:', error);
+                showNotification('Error loading rider information', 'error');
+            }
+        }
+
+        // Function to clear all intervals
+        function clearAllIntervals() {
+            const intervalId = window.setInterval(function(){}, Number.MAX_SAFE_INTEGER);
+            for (let i = 1; i < intervalId; i++) {
+                window.clearInterval(i);
+            }
+        }
+
+        // Function to initialize dashboard
+        async function initializeDashboard(options = { firstLoad: false }) {
+            console.group('initializeDashboard');
+            try {
+                console.log('1. Initializing dashboard components');
+                
+                // First check if we have a valid session
+                const sessionId = localStorage.getItem('riderSessionId') || sessionStorage.getItem('riderSessionId');
+                console.log('2. Checking for existing session ID:', sessionId);
+                
+                if (sessionId) {
+                    console.log('3. Found session ID, attempting to restore session');
+                    const isAuthenticated = await checkRiderSession({ firstLoad: !!options.firstLoad });
+                    
+                    if (!isAuthenticated || !currentRider) {
+                        console.error('4. Session restoration failed or no rider data');
+                        // On first load, try to proceed with saved rider data to avoid bounce
+                        if (options.firstLoad) {
+                            const savedRider = localStorage.getItem('riderData') || sessionStorage.getItem('riderData');
+                            if (savedRider) {
+                                try {
+                                    currentRider = JSON.parse(savedRider);
+                                    console.warn('4.1 Proceeding with saved rider data on first load despite failed revalidation');
+                                } catch (e) {
+                                    console.error('4.2 Failed parsing saved rider data on first load:', e);
+                                    // Clear any invalid session data
+                                    localStorage.removeItem('riderSessionId');
+                                    sessionStorage.removeItem('riderSessionId');
+                                    localStorage.removeItem('riderData');
+                                    sessionStorage.removeItem('riderData');
+                                    throw new Error('Session restoration failed');
+                                }
+                            } else {
+                                // Clear any invalid session data
+                                localStorage.removeItem('riderSessionId');
+                                sessionStorage.removeItem('riderSessionId');
+                                localStorage.removeItem('riderData');
+                                sessionStorage.removeItem('riderData');
+                                throw new Error('Session restoration failed');
+                            }
+                        } else {
+                            // Clear any invalid session data
+                            localStorage.removeItem('riderSessionId');
+                            sessionStorage.removeItem('riderSessionId');
+                            localStorage.removeItem('riderData');
+                            sessionStorage.removeItem('riderData');
+                            throw new Error('Session restoration failed');
+                        }
+                    }
+                    console.log('4. Session restored successfully');
+                } else {
+                    console.error('3. No session ID found in storage');
+                    // Check if we have rider data but no session (shouldn't happen, but just in case)
+                    const savedRider = localStorage.getItem('riderData') || sessionStorage.getItem('riderData');
+                    if (savedRider) {
+                        try {
+                            currentRider = JSON.parse(savedRider);
+                            console.log('4. Loaded rider data from storage');
+                        } catch (e) {
+                            console.error('4. Error parsing saved rider data:', e);
+                            localStorage.removeItem('riderData');
+                            sessionStorage.removeItem('riderData');
+                            throw new Error('Invalid rider data');
+                        }
+                    } else {
+                        throw new Error('No active session found');
+                    }
+                }
+
+                console.log('5. Loading rider info and data');
+                // Load initial data sequentially to avoid race conditions
+                await loadRiderInfo();
+                await loadAssignedOrders();
+                await loadDeliveryHistory();
+                await checkForNewNotifications();
+                
+                console.log('6. Dashboard components initialized successfully');
+                showNotification('Dashboard loaded successfully', 'success');
+                return true;
+            } catch (error) {
+                console.error('6. Error initializing dashboard:', error);
+                showNotification('Error loading dashboard data. Please refresh the page.', 'error');
+                // If we're not already on the login page, redirect there
+                if (!window.location.pathname.endsWith('rider-login.html')) {
+                    window.location.href = 'rider-login.html';
+                }
+                throw error; // Re-throw to be caught by the outer try-catch
+            } finally {
+                console.groupEnd();
+            }
+        }
+
+        // Function to load assigned orders
+        async function loadAssignedOrders() {
+            const assignedOrdersContainer = document.getElementById('assignedOrdersContainer');
+            if (!assignedOrdersContainer || !currentRider) return;
+            
+            try {
+                const riderId = currentRider.id;
+                const supabase = getSupabase();
+                
+                // Get orders assigned to this rider that aren't delivered
+                const { data: assignedOrders, error } = await supabase
+                    .from('orders')
+                    .select('*')
+                    .eq('assigned_rider_id', riderId)
+                    .in('status', ['Preparing', 'Delivery'])
+                    .order('created_at', { ascending: false });
+                
+                if (error) throw error;
+                
+                // Clear existing content
+                assignedOrdersContainer.innerHTML = '';
+                
+                if (assignedOrders.length === 0) {
+                    assignedOrdersContainer.innerHTML = '<p>No orders assigned at the moment.</p>';
+                    return;
+                }
+                
+                const ordersGrid = document.createElement('div');
+                ordersGrid.className = 'assigned-orders-grid';
+                
+                // Create and append order elements
+                assignedOrders.forEach(assignedOrder => {
+                    const orderCard = document.createElement('div');
+                    orderCard.className = 'order-card';
+                    orderCard.dataset.orderId = assignedOrder.id;
+                    
+                    // Format delivery time
+                    const deliveryTime = assignedOrder.time || 'Not specified';
+                    const deliveryDate = assignedOrder.date || 'Not specified';
+                    
+                    orderCard.innerHTML = `
+                        <div class="order-header">
+                            <h3 class="order-title">Order #${assignedOrder.id}</h3>
+                            <div class="order-status status-${(assignedOrder.status || '').toLowerCase()}">
+                                ${assignedOrder.status === 'Preparing' ? 'Being Prepared' : 
+                                  assignedOrder.status === 'Delivery' ? 'On Delivery' : assignedOrder.status || 'N/A'}
+                            </div>
+                        </div>
+                        
+                        <div class="order-details">
+                            <div class="detail-row">
+                                <div class="detail-label">Customer Name:</div>
+                                <div class="detail-value">${assignedOrder.customer_name || 'N/A'}</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Delivery Address:</div>
+                                <div class="detail-value">${assignedOrder.delivery_address || 'N/A'}</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Delivery Date:</div>
+                                <div class="detail-value">${deliveryDate}</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Delivery Time:</div>
+                                <div class="detail-value">${deliveryTime}</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Contact Number:</div>
+                                <div class="detail-value">${assignedOrder.contact_number || 'N/A'}</div>
+                            </div>
+                            <div class="detail-row">
+                                <div class="detail-label">Total Amount:</div>
+                                <div class="detail-value">₱${parseFloat(assignedOrder.total_amount || 0).toFixed(2)}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="order-actions">
+                            ${assignedOrder.status === 'Preparing' ? `
+                                <button class="btn delivery-btn" 
+                                        onclick="updateOrderStatus('${assignedOrder.id}', 'Delivery')">
+                                    <i class="fas fa-motorcycle"></i> Start Delivery
+                                </button>
+                            ` : assignedOrder.status === 'Delivery' ? `
+                                <button class="btn delivered-btn" 
+                                        onclick="updateOrderStatus('${assignedOrder.id}', 'Delivered')">
+                                    <i class="fas fa-check-circle"></i> Mark as Delivered
+                                </button>
+                            ` : ''}
+                        </div>
+                    `;
+                    
+                    ordersGrid.appendChild(orderCard);
+                });
+                
+                assignedOrdersContainer.appendChild(ordersGrid);
+                
+            } catch (error) {
+                console.error('Error loading assigned orders:', error);
+                showNotification('Error loading assigned orders', 'error');
+                
+                // If there's an error, show an empty state
+                if (assignedOrdersContainer) {
+                    assignedOrdersContainer.innerHTML = `
+                        <div class="error-state">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <p>Unable to load orders. Please try again later.</p>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        // Replace sendEmailNotification function with a simplified version that just shows notifications
+        async function sendEmailNotification(templateParams, templateType) {
+            // Instead of sending emails, just show a notification
+            let message = '';
+            switch (templateType) {
+                case 'onDelivery':
+                    message = `Order ${templateParams.transaction_id} is now on delivery.`;
+                    break;
+                case 'delivered':
+                    message = `Order ${templateParams.transaction_id} has been delivered.`;
+                    break;
+                default:
+                    message = `Order ${templateParams.transaction_id} has been updated.`;
+            }
+            showNotification(message, 'success');
+            return true;
+        }
+
+        // Update the updateOrderStatus function
+        async function updateOrderStatus(orderId, newStatus) {
+            if (!currentRider) {
+                showNotification('No rider session found', 'error');
+                return;
+            }
+
+            try {
+                const supabase = getSupabase();
+                console.log('Updating order status:', { orderId, newStatus, riderId: currentRider.id });
+
+                // First, verify the order exists and is assigned to this rider
+                // Use minimal select to avoid triggering complex RLS policies
+                const { data: order, error: orderError } = await supabase
+                    .from('orders')
+                    .select('id, assigned_rider_id, status')
+                    .eq('id', orderId)
+                    .single();
+
+                if (orderError) {
+                    console.error('Error fetching order:', {
+                        message: orderError.message,
+                        details: orderError.details,
+                        hint: orderError.hint,
+                        code: orderError.code,
+                        status: orderError.status
+                    });
+                    showNotification('Error fetching order details', 'error');
+                    return;
+                }
+
+                if (!order) {
+                    console.error('Order not found');
+                    showNotification('Order not found', 'error');
+                    return;
+                }
+
+                // Convert both IDs to strings for comparison to avoid type issues
+                const riderIdStr = currentRider.id.toString();
+                const assignedRiderIdStr = order.assigned_rider_id ? order.assigned_rider_id.toString() : '';
+
+                if (assignedRiderIdStr !== riderIdStr) {
+                    console.error('Order not assigned to this rider');
+                    showNotification('This order is not assigned to you', 'error');
+                    return;
+                }
+
+                // Update the order status directly
+                console.log('Attempting to update order:', { orderId, newStatus, currentRiderId: currentRider.id });
+                const { error: rpcError } = await supabase.rpc('rider_update_order_status', {
+                    p_order_id: orderId,
+                    p_new_status: newStatus,
+                    p_rider_id: Number(currentRider.id)
+                });
+
+                if (rpcError) {
+                    console.error('Error updating order via RPC:', {
+                        message: rpcError.message,
+                        details: rpcError.details,
+                        hint: rpcError.hint,
+                        code: rpcError.code,
+                        status: rpcError.status
+                    });
+
+                    // If it's the infinite recursion error, try a different approach
+                    if (rpcError.message && rpcError.message.includes('infinite recursion')) {
+                        console.warn('Infinite recursion detected, attempting alternative update method...');
+                        showNotification('Database policy issue detected. Please contact administrator.', 'warning');
+                        return;
+                    }
+
+                    throw new Error(`Database update failed: ${rpcError.message || 'Unknown error'}`);
+                }
+
+                console.log('Order updated successfully via RPC');
+
+                // Fetch additional order details needed for email notification
+                let emailOrderData = {};
+                try {
+                    const { data: fullOrder } = await supabase
+                        .from('orders')
+                        .select('email, name, transaction_id, address, order_items, payment_type, paid_amount, balance')
+                        .eq('id', orderId)
+                        .single();
+                    emailOrderData = fullOrder || {};
+                    console.log('Email data fetched successfully');
+                } catch (fetchError) {
+                    console.warn('Could not fetch order details for email, using minimal data:', fetchError);
+                    // Use any data we have from the minimal query
+                    emailOrderData = {
+                        email: '',
+                        name: '',
+                        transaction_id: '',
+                        address: '',
+                        order_items: '',
+                        payment_type: '',
+                        paid_amount: '',
+                        balance: ''
+                    };
+                }
+
+                // Send email notification based on the new status
+                try {
+                    await sendEmailNotification({
+                        email: emailOrderData.email || '',
+                        name: emailOrderData.name || '',
+                        transaction_id: emailOrderData.transaction_id || '',
+                        address: emailOrderData.address || '',
+                        order_items: emailOrderData.order_items || '',
+                        payment_type: emailOrderData.payment_type || '',
+                        paid_amount: emailOrderData.paid_amount || '',
+                        balance: emailOrderData.balance || ''
+                    }, newStatus.toLowerCase());
+                    console.log('Email notification sent successfully');
+                } catch (emailError) {
+                    console.error('Failed to send email notification:', emailError);
+                    // Don't fail the whole operation for email issues
+                }
+
+                // Update rider status if needed
+                try {
+                    if (newStatus === 'Delivery') {
+                        await updateRiderStatus('On Delivery');
+                    } else if (newStatus === 'Delivered') {
+                        await updateRiderStatus('Available');
+                        // Add to delivery history
+                        await addToDeliveryHistory(orderId, 'Delivered');
+                    }
+                } catch (riderError) {
+                    console.error('Error updating rider status:', riderError);
+                    showNotification('Order updated but could not update rider status', 'warning');
+                }
+
+                // Update UI
+                await loadAssignedOrders();
+                showNotification('Order status updated successfully', 'success');
+
+            } catch (error) {
+                console.error('Error updating order status:', error.message || error);
+                showNotification('Error updating order status: ' + (error.message || 'Unknown error'), 'error');
+            }
+        }
+        
+        // Function to load delivery history
+        async function loadDeliveryHistory() {
+            const historyContainer = document.getElementById('deliveryHistory');
+            if (!historyContainer || !currentRider) return;
+
+            try {
+                console.log('Loading delivery history for rider:', currentRider.id);
+                const supabase = getSupabase();
+
+                // Get delivery history for this rider
+                const { data: deliveries, error } = await supabase
+                    .from('order_history')
+                    .select('*, orders(*)')
+                    .eq('rider_id', currentRider.id)
+                    .eq('status', 'Delivered')
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+
+                if (error) {
+                    console.error('Error loading delivery history:', {
+                        message: error.message,
+                        details: error.details,
+                        hint: error.hint,
+                        code: error.code,
+                        status: error.status
+                    });
+                    throw error;
+                }
+
+                console.log('Delivery history loaded:', deliveries?.length || 0, 'records');
+
+                const tbody = document.getElementById('historyTableBody');
+                if (!tbody) {
+                    console.error('Could not find history table body');
+                    return;
+                }
+
+                // Clear existing content
+                tbody.innerHTML = '';
+                
+                if (!deliveries || deliveries.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 30px;">
+                                <i class="fas fa-history" style="font-size: 48px; color: #ddd; margin-bottom: 15px;"></i>
+                                <p>No delivery history found</p>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+                
+                // Add each delivery to the table
+                deliveries.forEach(delivery => {
+                    const order = delivery.orders;
+                    if (!order) return;
+                    
+                    const row = document.createElement('tr');
+                    row.dataset.deliveryId = delivery.id;
+                    row.innerHTML = `
+                        <td>${order.transaction_id || 'N/A'}</td>
+                        <td>${order.name || 'N/A'}</td>
+                        <td>${order.contact ? '+63' + order.contact : 'N/A'}</td>
+                        <td>${order.address || 'N/A'}</td>
+                        <td>${order.order_items || 'N/A'}</td>
+                        <td>${new Date(delivery.created_at).toLocaleString()}</td>
+                        <td><span class="status-badge status-delivered">Delivered</span></td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error in loadDeliveryHistory:', error);
+                const tbody = document.getElementById('historyTableBody');
+                if (tbody.children.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 30px;">
+                                <i class="fas fa-exclamation-circle" style="font-size: 48px; color: #dc3545; margin-bottom: 15px;"></i>
+                                <p>Error loading delivery history</p>
+                            </td>
+                        </tr>
+                    `;
+                }
+            }
+        }
+
+        // Update the addToDeliveryHistory function
+        async function addToDeliveryHistory(orderId, status) {
+            if (!currentRider) {
+                console.error('No current rider when adding to delivery history');
+                return false;
+            }
+
+            try {
+                console.log('Adding to delivery history:', { orderId, status, riderId: currentRider.id });
+                const supabase = getSupabase();
+                const { error } = await supabase
+                    .from('delivery_history')
+                    .insert([
+                        {
+                            order_id: orderId,
+                            rider_id: currentRider.id,
+                            status: status,
+                            created_at: new Date().toISOString()
+                        }
+                    ]);
+
+                if (error) {
+                    console.error('Error adding to delivery history:', {
+                        message: error.message,
+                        details: error.details,
+                        hint: error.hint,
+                        code: error.code
+                    });
+                    throw error;
+                }
+
+                console.log('Successfully added to delivery history');
+                return true;
+            } catch (error) {
+                console.error('Error adding to delivery history:', error.message || error);
+                return false;
+            }
+        }
+
+        // Function to show notifications
+        function showNotification(message, type = 'success') {
+            const container = document.getElementById('notificationContainer');
+            if (!container) return;
+
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            
+            let icon = 'check-circle';
+            if (type === 'error') icon = 'exclamation-circle';
+            if (type === 'warning') icon = 'exclamation-triangle';
+            if (type === 'info') icon = 'info-circle';
+            
+            notification.innerHTML = `
+                <i class="fas fa-${icon}"></i>
+                <span class="message">${message}</span>
+            `;
+            
+            container.appendChild(notification);
+            
+            // Trigger animation
+            setTimeout(() => {
+                notification.style.opacity = '1';
+                notification.style.transform = 'translateX(0)';
+            }, 10);
+            
+            // Remove notification after animation
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => {
+                    container.removeChild(notification);
+                }, 500);
+            }, 3000);
+        }
+
+        // Add this after the initializeDashboard function
+        async function checkForNewNotifications() {
+            if (!currentRider) return;
+
+            try {
+                const supabase = getSupabase();
+
+                // Get orders assigned to this rider that are in Preparing or Delivery status
+                const { data: assignedOrders, error } = await supabase
+                    .from('orders')
+                    .select('*')
+                    .eq('assigned_rider_id', currentRider.id)
+                    .in('status', ['Preparing', 'Delivery'])
+                    .order('updated_at', { ascending: false });
+
+                if (error) {
+                    throw error;
+                }
+
+                if (assignedOrders && assignedOrders.length > 0) {
+                    // Show notification for each new order that hasn't been shown yet
+                    assignedOrders.forEach(order => {
+                        if (!document.getElementById(`notification-${order.id}`)) {
+                            showOrderNotification(order);
+                        }
+                    });
+
+                    // Refresh assigned orders to show the new assignments
+                    await loadAssignedOrders();
+                }
+            } catch (error) {
+                console.error('Error checking for assigned orders:', error);
+            }
+        }
+
+        // Add this function to show order notifications
+        function showOrderNotification(order) {
+            if (!order) return;
+
+            const notification = document.createElement('div');
+            notification.className = 'order-notification';
+            notification.id = `notification-${order.id}`;
+
+            // Sanitize and escape HTML to prevent XSS
+            const escapeHtml = (unsafe) => {
+                return unsafe
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            };
+
+            const transactionId = order.transaction_id ? escapeHtml(order.transaction_id) : 'N/A';
+            const customerName = order.name ? escapeHtml(order.name) : 'N/A';
+            const address = order.address ? escapeHtml(order.address) : 'N/A';
+            const items = order.order_items ? escapeHtml(order.order_items) : 'No items';
+
+            notification.innerHTML = `
+                <div class="notification-header">
+                    <h3>New Order Assigned</h3>
+                    <button class="close-notification" onclick="this.parentElement.parentElement.remove()">×</button>
+                </div>
+                <div class="notification-content">
+                    <p><strong>Order ID:</strong> ${transactionId}</p>
+                    <p><strong>Customer:</strong> ${customerName}</p>
+                    <p><strong>Address:</strong> ${address}</p>
+                    <p><strong>Items:</strong> ${items}</p>
+                    <p><em>Order has been automatically assigned to you.</em></p>
+                </div>
+            `;
+
+            document.body.appendChild(notification);
+
+            // Auto-remove notification after 10 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 10000);
+        }
+
+        // Update the acceptOrder function to clear all notifications
+        async function acceptOrder(orderId, notificationId) {
+            if (!currentRider) {
+                showNotification('No rider session found', 'error');
+                return;
+            }
+
+            try {
+                // Remove all notifications for this order
+                const notifications = document.querySelectorAll('.order-notification');
+                notifications.forEach(notification => {
+                    if (notification.id.startsWith('notification-')) {
+                        notification.remove();
+                    }
+                });
+
+                showNotification('Order accepted successfully', 'success');
+
+                // Refresh assigned orders
+                loadAssignedOrders();
+            } catch (error) {
+                console.error('Error accepting order:', error);
+                showNotification('Error accepting order: ' + (error.message || 'Unknown error'), 'error');
+            }
+        }
+
+        // Update the declineOrder function to clear all notifications
+        async function declineOrder(orderId, notificationId) {
+            try {
+                // Remove all notifications for this order
+                const notifications = document.querySelectorAll('.order-notification');
+                notifications.forEach(notification => {
+                    if (notification.id.startsWith('notification-')) {
+                        notification.remove();
+                    }
+                });
+
+                showNotification('Order declined', 'info');
+            } catch (error) {
+                console.error('Error declining order:', error);
+                showNotification('Error declining order', 'error');
+            }
+        }
+    </script>
+</body>
+</html>
