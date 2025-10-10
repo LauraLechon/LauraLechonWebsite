@@ -810,29 +810,68 @@
     <script>
         // Global variables
         let currentRider = null;
+        let orderSubscription = null;
         
         // Initialize the application when the DOM is fully loaded
-        document.addEventListener('DOMContentLoaded', async function() {
-            console.group('DOMContentLoaded');
-            try {
-                console.log('1. DOM fully loaded');
-                
-                // First, check if we have a valid session
-                console.log('2. Checking rider session');
-                // Add a small initial delay to allow the session insert to propagate after login
-                await new Promise(r => setTimeout(r, 600));
-                const isAuthenticated = await checkRiderSession({ firstLoad: true });
-                console.log('3. Session check result:', isAuthenticated);
-                
-                if (!isAuthenticated) {
-                    console.log('4. Not authenticated, redirecting to login');
-                    if (!window.location.pathname.endsWith('rider-login.html')) {
-                        window.location.href = 'rider-login.html';
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDashboard({ firstLoad: true });
+            
+            // Set up real-time updates for new orders
+            setupRealtimeUpdates();
+        });
+
+        // Set up real-time updates for order assignments
+        function setupRealtimeUpdates() {
+            const supabase = getSupabase();
+            
+            // Only proceed if we have a logged-in rider
+            if (!currentRider) {
+                console.log('No rider logged in, skipping real-time updates');
+                return;
+            }
+
+            console.log('Setting up real-time order updates for rider:', currentRider.id);
+            
+            // Subscribe to changes in the orders table
+            const subscription = supabase
+                .channel('order_assignments')
+                .on('postgres_changes', 
+                    { 
+                        event: 'UPDATE', 
+                        schema: 'public', 
+                        table: 'orders',
+                        filter: `assigned_rider_id=eq.${currentRider.id}`
+                    }, 
+                    (payload) => {
+                        console.log('Order update received:', payload);
+                        // Check if this is a new assignment to the current rider
+                        if (payload.new.assigned_rider_id === currentRider.id && 
+                            payload.new.status === 'Delivery' &&
+                            (payload.old.status !== 'Delivery' || !payload.old.assigned_rider_id)) {
+                            console.log('New order assigned to rider:', payload.new);
+                            // Show notification for the new assignment
+                            showOrderNotification(payload.new);
+                            // Refresh the assigned orders list
+                            loadAssignedOrders();
+                        }
                     }
-                    return;
-                }
+                )
+                .subscribe((status) => {
+                    console.log('Realtime subscription status:', status);
+                    if (status === 'SUBSCRIBED') {
+                        console.log('Successfully subscribed to order updates');
+                    }
+                });
+
+            // Return the subscription so it can be unsubscribed later if needed
+            return subscription;
+        }
+
+        // Initialize the application when the DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                console.group('App Initialization');
                 
-                console.log('6. Setting up periodic checks');
                 // Clear any existing intervals first
                 clearAllIntervals();
                 
@@ -850,7 +889,7 @@
                 );
                 
                 // Test database connection
-                console.log('7. Testing database connection');
+                console.log('Testing database connection');
                 const dbTestResult = await testDatabaseConnection();
                 if (!dbTestResult) {
                     console.warn('Database connection test failed - some features may not work properly');
@@ -858,14 +897,17 @@
                 }
                 
                 // Initialize the dashboard
-                console.log('8. Initializing dashboard');
+                console.log('Initializing dashboard');
                 await initializeDashboard({ firstLoad: true });
                 
-                console.log('9. Dashboard initialization complete');
+                // Set up real-time updates
+                setupRealtimeUpdates();
+                
+                console.log('Dashboard initialization complete');
                 // Mark app as initialized to avoid duplicate loaders
                 window.riderAppInitialized = true;
             } catch (error) {
-                console.error('10. Failed to initialize application:', error);
+                console.error('Failed to initialize application:', error);
                 showNotification('Failed to initialize application. Please refresh the page.', 'error');
                 
                 // Only redirect if not already on login page
@@ -1392,6 +1434,7 @@
                 const supabase = getSupabase();
                 
                 // Get orders assigned to this rider that aren't delivered
+                // First, get the orders with basic info
                 const { data: assignedOrders, error } = await supabase
                     .from('orders')
                     .select('*')
@@ -1850,9 +1893,39 @@
             }
         }
 
-        // Add this function to show order notifications
+        // Function to show order notifications
         function showOrderNotification(order) {
-            if (!order) return;
+            console.group('Order Notification Debug');
+            console.log('Full order object:', order);
+            console.log('Available fields in order object:', Object.keys(order));
+            console.log('Customer name fields:', {
+                customer_name: order.customer_name,
+                name: order.name,
+                email: order.email
+            });
+            console.log('Address fields:', {
+                delivery_address: order.delivery_address,
+                address: order.address,
+                shipping_address: order.shipping_address
+            });
+            console.log('Contact fields:', {
+                phone: order.phone,
+                contact_number: order.contact_number,
+                contact: order.contact
+            });
+            console.groupEnd();
+            
+            if (!order) {
+                console.log('No order provided for notification');
+                return;
+            }
+
+            // Check if notification for this order already exists
+            const existingNotification = document.getElementById(`notification-${order.id}`);
+            if (existingNotification) {
+                console.log('Notification already exists for order:', order.id);
+                return; // Don't show duplicate notifications
+            }
 
             const notification = document.createElement('div');
             notification.className = 'order-notification';
@@ -1860,7 +1933,8 @@
 
             // Sanitize and escape HTML to prevent XSS
             const escapeHtml = (unsafe) => {
-                return unsafe
+                if (!unsafe && unsafe !== 0 && unsafe !== false) return 'N/A';
+                return String(unsafe)
                     .replace(/&/g, '&amp;')
                     .replace(/</g, '&lt;')
                     .replace(/>/g, '&gt;')
@@ -1868,10 +1942,66 @@
                     .replace(/'/g, '&#039;');
             };
 
+            // Format order items if they exist
+            let itemsText = 'No items';
+            try {
+                if (order.order_items) {
+                    // Check if it's already in the simple format like "Small x 1"
+                    if (typeof order.order_items === 'string' && /\s*x\s*\d+$/.test(order.order_items)) {
+                        // If it's already in the format "Item x Quantity", use it as is
+                        itemsText = order.order_items;
+                    } 
+                    // Handle comma-separated items like "Small x 1, Medium x 2"
+                    else if (typeof order.order_items === 'string' && order.order_items.includes(',')) {
+                        itemsText = order.order_items;
+                    }
+                    // Handle JSON format if it exists (for backward compatibility)
+                    else {
+                        try {
+                            const parsedItems = JSON.parse(order.order_items);
+                            if (Array.isArray(parsedItems)) {
+                                itemsText = parsedItems.map(item => 
+                                    item.name && item.quantity 
+                                        ? `${item.quantity}x ${item.name}` 
+                                        : JSON.stringify(item)
+                                ).join(', ');
+                            } else if (typeof parsedItems === 'object' && parsedItems !== null) {
+                                itemsText = Object.entries(parsedItems)
+                                    .map(([name, quantity]) => `${quantity}x ${name}`)
+                                    .join(', ');
+                            }
+                        } catch (e) {
+                            // If JSON parsing fails, use the raw string
+                            itemsText = order.order_items;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Error formatting order items:', e, 'Order items:', order.order_items);
+                itemsText = order.order_items || 'No items';
+            }
+
             const transactionId = order.transaction_id ? escapeHtml(order.transaction_id) : 'N/A';
-            const customerName = order.name ? escapeHtml(order.name) : 'N/A';
-            const address = order.address ? escapeHtml(order.address) : 'N/A';
-            const items = order.order_items ? escapeHtml(order.order_items) : 'No items';
+            
+            // Get customer details directly from the order
+            const customerName = order.customer_name || 
+                               order.name ||
+                               'Customer';
+            
+            // Get phone number from order
+            const phoneNumber = order.contact_number || 
+                              order.contact ||
+                              order.phone ||
+                              'Not provided';
+            
+            // Get address from order
+            const address = order.delivery_address || 
+                          order.address ||
+                          order.shipping_address ||
+                          'Address not provided';
+            
+            // Log the order data for debugging
+            console.log('Order data:', order);
 
             notification.innerHTML = `
                 <div class="notification-header">
@@ -1881,8 +2011,10 @@
                 <div class="notification-content">
                     <p><strong>Order ID:</strong> ${transactionId}</p>
                     <p><strong>Customer:</strong> ${customerName}</p>
+                    <p><strong>Contact:</strong> ${phoneNumber}</p>
                     <p><strong>Address:</strong> ${address}</p>
-                    <p><strong>Items:</strong> ${items}</p>
+                    <p><strong>Items:</strong> ${itemsText}</p>
+                    ${order.balance ? `<p><strong>Balance:</strong> ₱${Number(order.balance).toLocaleString()}</p>` : ''}
                     <p><em>Order has been automatically assigned to you.</em></p>
                 </div>
             `;
