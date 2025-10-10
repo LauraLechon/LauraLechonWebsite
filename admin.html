@@ -1682,6 +1682,26 @@
         </div>
     </div>
     
+    <!-- Order Cancellation Modal -->
+    <div id="cancelOrderModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Cancel Order</h3>
+                <button class="close-btn" onclick="closeCancelOrderModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="cancellationReason">Reason for Cancellation:</label>
+                    <textarea id="cancellationReason" rows="4" placeholder="Please specify the reason for cancellation..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-secondary" onclick="closeCancelOrderModal()">Cancel</button>
+                    <button class="btn btn-danger" id="confirmCancelBtn">Confirm Cancellation</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Add/Edit Rider Modal -->
     <div id="riderModal" class="modal">
         <div class="modal-content">
@@ -1884,6 +1904,10 @@
         // Check session on page load
         checkAdminSession();
 
+        // Brevo Email Configuration
+        const brevoApiKey = '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'; // Replace with your actual Brevo API key
+        const brevoUrl = 'https://api.brevo.com/v3/smtp/email';
+        
         // Initialize data structures
         let ordersByYear = {};
         let confirmedOrdersByYear = {};
@@ -2387,7 +2411,7 @@
                                 <button class="action-btn btn-delivered" onclick="markAsDelivered('${order.id}')">
                                     <i class="fas fa-check-circle"></i> Move to History
                                 </button>
-                                <button class="action-btn btn-deny" onclick="cancelOrder('${order.id}')">
+                                <button class="action-btn btn-deny" onclick="showCancelOrderModal('${order.id}')">
                                     <i class="fas fa-times"></i> Cancel
                                 </button>
                             </div>
@@ -2578,13 +2602,245 @@
         async function confirmOrder(orderId) {
             try {
                 console.log('confirmOrder called with orderId:', orderId);
+                
+                // First, get the order details to include in the email
+                const { data: order, error: fetchError } = await supabase
+                    .from('orders')
+                    .select('*')
+                    .eq('id', orderId)
+                    .single();
 
-                // Open the Assign Rider modal directly
+                if (fetchError) throw fetchError;
+                if (!order) {
+                    throw new Error('Order not found');
+                }
+
+                // Update order status using RPC to avoid policy issues
+                console.log('Updating order status via RPC...');
+                const { data: updateResult, error: rpcError } = await supabase.rpc('update_order_status', {
+                    p_order_id: orderId,
+                    p_status: 'confirmed',
+                    p_rider_id: null
+                });
+
+                console.log('RPC Update result:', { updateResult, rpcError });
+
+                if (rpcError) {
+                    console.error('RPC call failed:', rpcError);
+                    throw rpcError;
+                }
+                
+                // Show success notification
+                showNotification('Order confirmed successfully', 'success');
+
+                // Open the Assign Rider modal
                 await showAssignRiderModal(orderId);
                 return;
+                
             } catch (error) {
-                console.error('Error opening Assign Rider modal:', error);
-                showNotification('Error opening Assign Rider modal', 'error');
+                console.error('Error in confirmOrder:', error);
+                showNotification('Error processing order confirmation: ' + (error.message || 'Unknown error'), 'error');
+            }
+        }
+
+        // Function to show the deny order modal
+        function showDenyOrderModal(order) {
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.style.display = 'flex';
+            modal.style.justifyContent = 'center';
+            modal.style.alignItems = 'center';
+            modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+            modal.style.position = 'fixed';
+            modal.style.top = '0';
+            modal.style.left = '0';
+            modal.style.right = '0';
+            modal.style.bottom = '0';
+            modal.style.zIndex = '1000';
+            
+            modal.innerHTML = `
+                <div class="modal-content" style="background: white; padding: 20px; border-radius: 8px; max-width: 500px; width: 90%;">
+                    <div class="modal-header" style="margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+                        <h3 style="margin: 0; color: #d32f2f;">Deny Order #${order.transaction_id}</h3>
+                        <button class="close-btn" onclick="this.closest('.modal').remove()" style="background: none; border: none; font-size: 20px; cursor: pointer;">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Please provide a reason for denying this order:</p>
+                        <textarea id="denyReason" rows="4" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px;" placeholder="Enter reason for denial..."></textarea>
+                        <p>Additional information (optional):</p>
+                        <textarea id="denyAdditionalInfo" rows="3" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px;" placeholder="Any additional information for the customer..."></textarea>
+                    </div>
+                    <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                        <button class="modal-btn cancel" onclick="this.closest('.modal').remove()" style="padding: 8px 16px; background-color: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;">Cancel</button>
+                        <button class="modal-btn save" id="confirmDenyBtn" style="padding: 8px 16px; background-color: #d32f2f; color: white; border: none; border-radius: 4px; cursor: pointer;">Confirm Denial</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Focus the reason textarea
+            setTimeout(() => {
+                const textarea = modal.querySelector('#denyReason');
+                if (textarea) textarea.focus();
+            }, 100);
+            
+            // Handle confirm button click
+            modal.querySelector('#confirmDenyBtn').addEventListener('click', async () => {
+                const reason = modal.querySelector('#denyReason').value.trim();
+                if (!reason) {
+                    alert('Please provide a reason for denying the order.');
+                    return;
+                }
+                
+                const additionalInfo = modal.querySelector('#denyAdditionalInfo').value.trim();
+                await processOrderDenial(order, reason, additionalInfo);
+                modal.remove();
+            });
+            
+            // Close modal when clicking outside
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+        }
+        
+        // Process order denial
+        async function processOrderDenial(order, reason, additionalInfo = '') {
+            const denyBtn = document.querySelector(`button[onclick*="denyOrder('${order.id}')"]`);
+            const originalText = denyBtn ? denyBtn.innerHTML : '';
+            
+            try {
+                if (denyBtn) {
+                    denyBtn.disabled = true;
+                    denyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+                }
+                
+                // First, try to send the email before updating the order status
+                // This helps avoid RLS recursion issues
+                try {
+                    // Prepare order details for email
+                    const orderDetails = {
+                        reason: reason,
+                        additionalInfo: additionalInfo,
+                        orderId: order.transaction_id,
+                        date: new Date(order.date).toLocaleDateString(),
+                        items: order.order_items,
+                        totalAmount: order.total_amount ? `₱${order.total_amount.toFixed(2)}` : '₱0.00'
+                    };
+
+                    // Send denial email first
+                    const emailSent = await sendOrderEmail(
+                        order.email,
+                        order.name,
+                        order.transaction_id,
+                        '2', // Using template ID 2 for order denied
+                        orderDetails
+                    );
+
+                    if (!emailSent) {
+                        throw new Error('Failed to send denial email');
+                    }
+                } catch (emailError) {
+                    console.error('Email sending error:', emailError);
+                    // Continue with order denial even if email fails
+                    showNotification('Email sending failed, but proceeding with order denial', 'warning');
+                }
+                
+                console.log('Attempting to deny order:', order.id);
+                
+                // First, check if the order exists and get its current status
+                console.log('Checking order status before deletion...');
+                const { data: orderData, error: fetchError } = await supabase
+                    .from('orders')
+                    .select('*')
+                    .eq('id', order.id)
+                    .single();
+                
+                console.log('Current order status:', orderData ? orderData.status : 'Order not found');
+                
+                if (fetchError) {
+                    console.error('Error fetching order:', fetchError);
+                    throw fetchError;
+                }
+                
+                if (!orderData) {
+                    throw new Error('Order not found');
+                }
+                
+                // Try to delete the order directly
+                console.log('Attempting to delete order...');
+                const { data: deleteData, error: deleteError } = await supabase
+                    .from('orders')
+                    .delete()
+                    .eq('id', order.id)
+                    .select('*');
+
+                console.log('Delete result:', { 
+                    deleted: !!deleteData && deleteData.length > 0,
+                    data: deleteData,
+                    error: deleteError 
+                });
+                
+                // Check if the order still exists after deletion attempt
+                const { data: verifyData } = await supabase
+                    .from('orders')
+                    .select('id')
+                    .eq('id', order.id)
+                    .single();
+                    
+                console.log('Order still exists after deletion:', !!verifyData);
+
+                if (verifyData) {
+                    console.log('Delete failed, trying to update status instead:', deleteError);
+                    
+                    // If delete fails, try to mark as deleted
+                    console.log('Attempting to mark order as deleted...');
+                    const { data: updateData, error: updateError } = await supabase
+                        .from('orders')
+                        .update({ 
+                            status: 'Denied',
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', order.id)
+                        .select();
+
+                    console.log('Update result:', { updateData, updateError });
+
+                    if (updateError) {
+                        console.log('Update also failed, trying minimal update:', updateError);
+                        
+                        // Last resort: try updating just one field
+                        console.log('Attempting minimal update...');
+                        const { data: minimalData, error: minimalError } = await supabase
+                            .from('orders')
+                            .update({ status: 'Denied' })
+                            .eq('id', order.id)
+                            .select();
+                            
+                        console.log('Minimal update result:', { minimalData, minimalError });
+                            
+                        if (minimalError) {
+                            console.error('All update attempts failed:', minimalError);
+                            throw minimalError;
+                        }
+                    }
+                }
+
+                showNotification('Order has been denied successfully', 'success');
+                
+                // Refresh the order list
+                await renderOrderList();
+                
+            } catch (error) {
+                console.error('Error denying order:', error);
+                showNotification('Error processing order denial: ' + (error.message || 'Unknown error'), 'error');
+            } finally {
+                if (denyBtn) {
+                    denyBtn.disabled = false;
+                    denyBtn.innerHTML = originalText;
+                }
             }
         }
 
@@ -2593,48 +2849,21 @@
             try {
                 // Get the order details first
                 const { data: order, error: fetchError } = await supabase
-                        .from('orders')
-                        .select('*')
-                        .eq('id', orderId)
-                        .single();
+                    .from('orders')
+                    .select('*')
+                    .eq('id', orderId)
+                    .single();
 
                 if (fetchError) throw fetchError;
-
-                // Show confirmation dialog with reason input
-                const reason = prompt('Please enter the reason for denying this order:');
-                if (!reason) return; // User cancelled
-
-                // Update order status
-                const { error: updateError } = await supabase
-                        .from('orders')
-                    .update({ 
-                        status: 'Denied',
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', orderId);
-
-                if (updateError) throw updateError;
-
-                // Prepare order details for email
-                const orderDetails = `Order ID: ${order.transaction_id}\n` +
-                                   `Date: ${new Date(order.date).toLocaleDateString()}\n` +
-                                   `Items: ${JSON.stringify(order.order_items, null, 2)}\n` +
-                                   `Reason: ${reason}`;
-
-
-                // Send denial email
-                await sendOrderEmail(
-                    order.email,
-                    order.name,
-                    order.transaction_id,
-                    'denied',
-                    orderDetails
-                );
-
-                showNotification('Order denied and email sent successfully', 'success');
-                await renderOrderList();
+                if (!order) {
+                    throw new Error('Order not found');
+                }
+                
+                // Show the custom deny order modal
+                showDenyOrderModal(order);
+                
             } catch (error) {
-                console.error('Error denying order:', error);
+                console.error('Error in denyOrder:', error);
                 showNotification('Error processing order denial: ' + (error.message || 'Unknown error'), 'error');
             }
         }
@@ -2734,17 +2963,25 @@
             const hiddenOrderIdEl = document.getElementById('assignOrderIdHidden');
             const riderSelectEl = document.getElementById('assignRiderSelect');
             const confirmBtn = document.querySelector('#assignRiderModal .modal-footer .save');
+            
+            if (!hiddenOrderIdEl || !riderSelectEl) {
+                console.error('Required elements not found');
+                return;
+            }
 
-            const orderId = hiddenOrderIdEl ? hiddenOrderIdEl.value : '';
-            const riderId = riderSelectEl ? riderSelectEl.value : '';
-            console.log('[assignRiderToOrder] orderId:', orderId, 'riderId:', riderId);
+            const orderId = hiddenOrderIdEl.value;
+            const riderSelect = document.getElementById('assignRiderSelect');
+            const selectedRider = riderSelect.options[riderSelect.selectedIndex];
             
-            // Debug: Log initial order status
-            console.log('Initial order status:');
-            await debugOrderStatus(orderId);
-            
+            if (!selectedRider) {
+                console.error('[assignRiderToOrder] No rider selected');
+                return;
+            }
+
+            const riderId = selectedRider.value;
+            const riderName = selectedRider.text;
+
             if (!orderId) {
-                showNotification('Missing Order ID. Please close the modal and try again.', 'error');
                 console.error('[assignRiderToOrder] Missing orderId from hidden field');
                 return;
             }
@@ -2761,44 +2998,29 @@
                     confirmBtn.textContent = 'Assigning...';
                 }
 
-                // Get the order details
+                // Get the current order
                 const { data: order, error: orderError } = await supabase
                     .from('orders')
                     .select('*')
                     .eq('id', orderId)
                     .single();
 
-                if (orderError) {
-                    console.error('Error fetching order:', orderError);
-                    throw orderError;
-                }
-                if (!order) {
-                    showNotification('Order not found', 'error');
+                if (orderError) throw orderError;
+                if (!order) throw new Error('Order not found');
+
+                // Check if the order is already assigned to this rider
+                if (order.rider_id === riderId) {
+                    showNotification('This order is already assigned to the selected rider', 'info');
                     return;
                 }
 
-                // Get the rider details
-                const { data: rider, error: riderError } = await supabase
-                    .from('riders')
-                    .select('*')
-                    .eq('id', riderId)
-                    .single();
-
-                if (riderError) {
-                    console.error('Error fetching rider:', riderError);
-                    throw riderError;
-                }
-                if (!rider) {
-                    showNotification('Selected rider not found', 'error');
-                    return;
-                }
-
-                // Convert riderId to number since assigned_rider_id is bigint
+                // Convert riderId to number for RPC
                 const riderIdNum = Number(riderId);
                 
                 console.log('Attempting to update order with RPC:', {
                     orderId: orderId,
                     riderId: riderIdNum,
+                    riderName: riderName,
                     status: 'Preparing'
                 });
 
@@ -2819,6 +3041,87 @@
 
                     // If we get here, the RPC call was successful
                     console.log('Order updated successfully via RPC:', updateResult);
+                    
+                    // Get the latest order details for email
+                    const { data: order, error: fetchError } = await supabase
+                        .from('orders')
+                        .select('*')
+                        .eq('id', orderId)
+                        .single();
+
+                    if (fetchError) throw fetchError;
+
+                    // Prepare order details for email
+                    let orderItems = [];
+                    try {
+                        if (typeof order.order_items === 'string') {
+                            // First try to parse as JSON
+                            try {
+                                orderItems = JSON.parse(order.order_items);
+                                // If parsing succeeds but result is not an array, wrap it in an array
+                                if (!Array.isArray(orderItems)) {
+                                    orderItems = [orderItems];
+                                }
+                            } catch (e) {
+                                // If parsing fails, treat it as a simple string
+                                console.log('order_items is a simple string, converting to array:', order.order_items);
+                                orderItems = [{
+                                    name: order.order_items,
+                                    quantity: 1,
+                                    price: order.total_amount || 0,
+                                    total: order.total_amount || 0
+                                }];
+                            }
+                        } else if (Array.isArray(order.order_items)) {
+                            orderItems = order.order_items;
+                        }
+                    } catch (e) {
+                        console.warn('Error processing order items:', e);
+                        orderItems = [];
+                    }
+
+                    const emailOrderDetails = {
+                        deliveryAddress: order.delivery_address || 'Not specified',
+                        items: orderItems,
+                        deliveryDate: order.delivery_date || 'Not specified',
+                        deliveryTime: order.delivery_time || 'Not specified',
+                        total: order.total_amount || 0,
+                        paymentMethod: order.payment_method || 'Not specified',
+                        orderStatus: 'Confirmed & Assigned',
+                        orderDate: order.created_at ? new Date(order.created_at).toLocaleDateString() : 'Not specified',
+                        orderTime: order.created_at ? new Date(order.created_at).toLocaleTimeString() : 'Not specified',
+                        riderName: riderName || 'Our delivery partner'
+                    };
+                    
+                    console.log('Prepared email details:', { 
+                        ...emailOrderDetails, 
+                        items: orderItems // Log items separately for debugging
+                    });
+
+                    // Email order details are now ready to be used
+                    console.log('Email order details prepared:', JSON.stringify(emailOrderDetails, null, 2));
+
+                    // Send confirmation email
+                    console.log('Attempting to send confirmation email...');
+                    try {
+                        const emailSent = await sendOrderEmail(
+                            order.email,
+                            order.customer_name || 'Customer',
+                            order.transaction_id,
+                            1, // Template ID for Order Confirmed
+                            emailOrderDetails
+                        );
+                        
+                        if (emailSent) {
+                            showNotification('Confirmation email sent to customer', 'success');
+                        } else {
+                            console.warn('Failed to send confirmation email: sendOrderEmail returned false');
+                            showNotification('Email sending failed: Internal error', 'warning');
+                        }
+                    } catch (emailError) {
+                        console.error('Error sending confirmation email:', emailError);
+                        showNotification('Email sending failed: ' + (emailError.message || 'Unknown error'), 'warning');
+                    }
                     
                     // Debug: Log order status after update
                     await debugOrderStatus(orderId);
@@ -2937,7 +3240,7 @@
                     if (confirmedTab) confirmedTab.click();
                 }
                 
-                showNotification(`Rider ${rider.name} assigned to order #${order.transaction_id}`, 'success');
+                showNotification(`Rider ${riderName} assigned to order #${order.transaction_id}`, 'success');
             } catch (error) {
                 console.error('Detailed error in assignRiderToOrder:', error);
                 showNotification('Error assigning rider: ' + (error.message || 'Unknown error'), 'error');
@@ -2948,6 +3251,7 @@
                 }
             }
         }
+    
         // Expose to global scope for inline onclick handlers
         window.showAssignRiderModal = showAssignRiderModal;
         window.assignRiderToOrder = assignRiderToOrder;
@@ -3141,37 +3445,83 @@
             }
         }
 
-        // Update the cancelOrder function to work with Supabase
-        async function cancelOrder(orderId) {
-                    // Get the order first to check if it has an assigned rider
-                    const { data: order, error: fetchError } = await supabase
-                        .from('orders')
-                        .select('*')
-                        .eq('id', orderId)
-                        .single();
+        // Global variables for order cancellation
+        let currentCancellingOrderId = null;
+        let currentOrder = null;
+
+        // Show cancel order modal
+        async function showCancelOrderModal(orderId) {
+            try {
+                // Fetch the order details first
+                const { data: order, error } = await supabase
+                    .from('orders')
+                    .select('*')
+                    .eq('id', orderId)
+                    .single();
                 
-                    if (fetchError) {
-                        console.error('Error fetching order:', fetchError);
-                        throw fetchError;
-                    }
-                    if (!order) {
-                        console.error('Order not found for ID:', orderId);
-                        showNotification('Order not found', 'error');
-                        return;
-                    }
+                if (error) throw error;
+                if (!order) {
+                    showNotification('Order not found', 'error');
+                    return;
+                }
+                
+                currentOrder = order;
+                currentCancellingOrderId = orderId;
+                document.getElementById('cancelOrderModal').style.display = 'block';
+                document.getElementById('cancellationReason').value = '';
+                document.getElementById('cancellationReason').focus();
+            } catch (error) {
+                console.error('Error fetching order details:', error);
+                showNotification('Error loading order details', 'error');
+            }
+        }
 
-            // Show confirmation dialog with reason input
-            const reason = prompt('Please enter the reason for cancelling this order:');
-            if (!reason) return; // User cancelled
+        // Close cancel order modal
+        function closeCancelOrderModal() {
+            document.getElementById('cancelOrderModal').style.display = 'none';
+            currentCancellingOrderId = null;
+        }
 
-            if (confirm('Are you sure you want to cancel this order? This action cannot be undone.')) {
-                try {
-                    console.log('Starting order cancellation process...');
-                    console.log('Order ID:', orderId);
-                    console.log('Found order to cancel:', order);
-                    
-                    // If there's an assigned rider, update their status first
-                    if (order.assigned_rider_id) {
+        // Handle confirm cancellation button click
+        document.getElementById('confirmCancelBtn').addEventListener('click', async function() {
+            const reason = document.getElementById('cancellationReason').value.trim();
+            if (!reason) {
+                showNotification('Please provide a reason for cancellation', 'error');
+                return;
+            }
+            
+            if (currentCancellingOrderId) {
+                await cancelOrder(currentCancellingOrderId, reason);
+                closeCancelOrderModal();
+            }
+        });
+
+        // Update the cancelOrder function to work with Supabase and Brevo
+        async function cancelOrder(orderId, reason) {
+            try {
+                // Get the order first to check if it has an assigned rider
+                const { data: order, error: fetchError } = await supabase
+                    .from('orders')
+                    .select('*')
+                    .eq('id', orderId)
+                    .single();
+        
+                if (fetchError) {
+                    console.error('Error fetching order:', fetchError);
+                    throw fetchError;
+                }
+                if (!order) {
+                    console.error('Order not found for ID:', orderId);
+                    showNotification('Order not found', 'error');
+                    return;
+                }
+
+                console.log('Starting order cancellation process...');
+                console.log('Order ID:', orderId);
+                console.log('Found order to cancel:', order);
+                
+                // If there's an assigned rider, update their status first
+                if (order.assigned_rider_id) {
                         console.log('Updating rider status...');
                         console.log('Rider ID:', order.assigned_rider_id);
                         
@@ -3214,14 +3564,20 @@
                                        `Items: ${JSON.stringify(order.order_items, null, 2)}\n` +
                                        `Reason: ${reason}`;
 
-                    // Send cancellation email
+                    // Send cancellation email using Brevo template ID 3 for order cancellations
                     try {
                         await sendOrderEmail(
                             order.email,
                             order.name,
                             order.transaction_id,
-                            'cancelled',
-                            orderDetails
+                            3, // Brevo template ID for order cancellation
+                            {
+                                orderId: order.transaction_id,
+                                customerName: order.name,
+                                orderDate: new Date(order.date).toLocaleDateString(),
+                                cancellationReason: reason,
+                                orderItems: JSON.stringify(order.order_items, null, 2)
+                            }
                         );
                     } catch (emailError) {
                         console.error('Failed to send cancellation email:', emailError);
@@ -3261,7 +3617,6 @@
                     showNotification('Error cancelling order: ' + (error.message || 'Unknown error'), 'error');
                 }
             }
-        }
 
         // Mark order as delivered
         async function markAsDelivered(orderId) {
@@ -3705,6 +4060,16 @@
 
         // Initialize the application when DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
+            // Add click handler for cancel buttons in the orders table
+            document.addEventListener('click', function(e) {
+                if (e.target && e.target.classList.contains('cancel-order-btn')) {
+                    const orderId = e.target.getAttribute('data-order-id');
+                    if (orderId) {
+                        showCancelOrderModal(orderId);
+                    }
+                }
+            });
+
             if (window.supabase) {
                 initializeApp();
             } else {
@@ -4127,12 +4492,138 @@
             }
         }
 
-        // Function to send email (placeholder for future implementation)
-        async function sendOrderEmail(email, name, orderId, status, orderDetails = '') {
-            console.log('Email functionality will be implemented here');
-            // TODO: Implement email sending functionality
-            return true;
-        }
+        // Function to send email using Brevo templates
+        async function sendOrderEmail(email, name, orderId, templateId, orderDetails = {}) {
+            console.log('sendOrderEmail called with:', { email, name, orderId, templateId });
+            
+            try {
+                // Check if email is valid
+                if (!email || !email.includes('@')) {
+                    const errorMsg = `Invalid email address: ${email}`;
+                    console.warn(errorMsg);
+                    throw new Error(errorMsg);
+                }
+                
+                // Brevo API endpoint
+                const brevoUrl = 'https://api.brevo.com/v3/smtp/email';
+                
+                // Get API key
+                const brevoApiKey = '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';
+                
+                console.log('Using Brevo API key:', brevoApiKey ? '*** (key exists)' : 'MISSING');
+                
+                if (!brevoApiKey || brevoApiKey === 'YOUR_BREVO_API_KEY') {
+                    const errorMsg = 'Brevo API key is not properly configured';
+                    console.error(errorMsg);
+                    throw new Error(errorMsg);
+                }
+                
+                // Format order items for the email
+                const orderItems = orderDetails.items && Array.isArray(orderDetails.items) 
+                    ? orderDetails.items.map(item => {
+                        const itemName = item.product_name || item.name || 'Item';
+                        const quantity = item.quantity || 1;
+                        const price = item.price || 0;
+                        const total = item.total || (price * quantity);
+                        const size = item.size ? ` (${item.size})` : '';
+                        const addons = item.addons && item.addons.length > 0 
+                            ? `\n  - Add-ons: ${Array.isArray(item.addons) ? item.addons.map(a => a.name || a).join(', ') : item.addons}` 
+                            : '';
+                        return `${quantity}x ${itemName}${size} - ₱${total.toFixed(2)}${addons}`;
+                    }).join('\n\n')
+                    : 'No items in order';
+                
+                // Prepare the email data with template parameters
+                const emailData = {
+                    sender: {
+                        name: "Laura's Lechon",
+                        email: "lyrojpulmones@gmail.com"
+                    },
+                    to: [{
+                        email: email,
+                        name: name
+                    }],
+                    subject: templateId === 'confirmed' 
+                        ? `Order Confirmed - #${orderId}` 
+                        : templateId === 'shipped' 
+                            ? `Your Order is on the Way - #${orderId}`
+                            : `Order Update - #${orderId}`,
+                    templateId: parseInt(templateId),
+                    // Add fallback text content (required by Brevo API)
+                    htmlContent: '<p>Thank you for your order. Please enable HTML to view the full email content.</p>',
+                    textContent: 'Thank you for your order. Please view this email in an HTML-compatible email client to see the full content.',
+                    params: {
+                        name: name,
+                        transaction_id: orderId,
+                        order_items: orderItems,
+                        order_date: orderDetails.orderDate || new Date().toLocaleDateString('en-PH'),
+                        order_time: orderDetails.orderTime || new Date().toLocaleTimeString('en-PH', {hour: '2-digit', minute:'2-digit'}),
+                        address: orderDetails.deliveryAddress || 'Not specified',
+                        delivery_date: orderDetails.deliveryDate || 'Not specified',
+                        delivery_time: orderDetails.deliveryTime || 'Not specified',
+                        payment_method: orderDetails.paymentMethod || 'Not specified',
+                        order_status: orderDetails.orderStatus || 'Confirmed',
+                        rider_name: orderDetails.riderName || 'Our delivery partner',
+                        total: orderDetails.total ? `₱${Number(orderDetails.total).toFixed(2)}` : '₱0.00',
+                        order_summary: orderItems  // Using the correct variable name
+                    }
+                };
+                
+                // Log the email details for debugging
+                console.log('Preparing to send email with details:', {
+                    to: email,
+                    templateId: templateId,
+                    orderId: orderId,
+                    isLocalhost: (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+                });
+                
+                // In development, we'll still try to send the email but log it first
+                if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                    console.log('Running in development mode - attempting to send actual email');
+                }
+                
+                // Send the email using Brevo API
+                console.log('Sending request to Brevo API...');
+                const response = await fetch(brevoUrl, {
+                    method: 'POST',
+                    headers: {
+                        'accept': 'application/json',
+                        'api-key': brevoApiKey,
+                        'content-type': 'application/json'
+                    },
+                    body: JSON.stringify(emailData)
+                });
+                
+                console.log('Brevo API response status:', response.status);
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    const errorMessage = errorData.message || `HTTP error! status: ${response.status}`;
+                    
+                    // Handle specific Brevo errors
+                    if (response.status === 401) {
+                        console.error('Brevo API Error: Unauthorized. Please check your API key and IP whitelisting.');
+                        console.error('Visit https://app.brevo.com/security/authorised_ips to whitelist your IP address.');
+                    } else if (response.status === 400) {
+                        console.error('Brevo API Error: Bad Request', errorData);
+                    } else if (response.status === 403) {
+                        console.error('Brevo API Error: Forbidden. Check your account permissions.');
+                    } else if (response.status === 429) {
+                        console.error('Brevo API Error: Rate limit exceeded. Please try again later.');
+                    }
+                    
+                    throw new Error(errorMessage);
+                }
+                
+                    console.log(`Email sent successfully to ${email}`);
+                    return true;
+                } catch (error) {
+                    console.error('Error sending email:', error);
+                    // Rethrow the error to be caught by the caller
+                    throw error;
+                }
+            }
+        
 
 
         
