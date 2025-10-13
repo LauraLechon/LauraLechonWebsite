@@ -7,7 +7,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
     <link rel="icon" type="image/x-icon" href="adminlogo.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Load Supabase SDK first -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Then load our config that initializes the client -->
     <script src="supabase-config.js"></script>
     <style>
         :root {
@@ -331,6 +334,47 @@
         notificationContainer.className = 'notification-container';
         document.body.appendChild(notificationContainer);
 
+        // Wait for Supabase to be initialized
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Wait for Supabase to be initialized (with a timeout)
+                const waitForSupabase = () => {
+                    return new Promise((resolve, reject) => {
+                        let attempts = 0;
+                        const check = () => {
+                            if (window.supabase) return resolve();
+                            if (attempts++ > 50) return reject(new Error('Supabase client not initialized'));
+                            setTimeout(check, 100);
+                        };
+                        check();
+                    });
+                };
+
+                await waitForSupabase();
+                
+                // Check if user is already logged in
+                const { data: { session }, error } = await window.supabase.auth.getSession();
+                
+                if (error) {
+                    console.error('Session check error:', error);
+                    showNotification('Error checking session. Please refresh the page.', 'error');
+                    return;
+                }
+
+                if (session) {
+                    console.log('Active session found, redirecting to dashboard...');
+                    window.location.href = 'rider-dashboard.html';
+                    return;
+                }
+
+                console.log('No active session, showing signup form');
+                
+            } catch (err) {
+                console.error('Error during initialization:', err);
+                showNotification('Failed to initialize. Please refresh the page.', 'error');
+            }
+        });
+
         // Function to show notifications
         function showNotification(message, type = 'success') {
             const notification = document.createElement('div');
@@ -363,8 +407,17 @@
             }, 3000);
         }
 
+        let isSubmitting = false;
+
         async function signup(event) {
             event.preventDefault();
+
+            if (isSubmitting) {
+                console.warn("Signup already in progress, ignoring duplicate submit");
+                return;
+            }
+
+            isSubmitting = true;
             
             // Get form values
             const name = document.getElementById('name').value.trim();
@@ -382,6 +435,11 @@
             signupBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating account...';
 
             try {
+                // Ensure Supabase is initialized
+                if (!window.supabase) {
+                    throw new Error('Application not properly initialized. Please refresh the page.');
+                }
+
                 // Clear previous errors
                 document.querySelectorAll('.error').forEach(el => el.style.display = 'none');
 
@@ -402,12 +460,13 @@
                     throw new Error('Password must be at least 6 characters long');
                 }
 
-                console.log('Creating rider account...');
-                
-                // First, check if rider already exists by email
-                const { data: existingRider, error: checkError } = await supabase
+                console.log('Starting signup process...');
+
+                // 1️⃣ First check if email already exists in riders table
+                console.log('Checking for existing rider with email:', email);
+                const { data: existingRider, error: checkError } = await window.supabase
                     .from('riders')
-                    .select('id')
+                    .select('email')
                     .eq('email', email)
                     .maybeSingle();
 
@@ -415,36 +474,80 @@
                     throw new Error('This email is already registered. Please use a different email or try logging in.');
                 }
 
-                // Create new rider with hashed password
-                const { data: newRider, error: createError } = await supabase
-                    .from('riders')
-                    .insert([{
-                        name,
-                        email,
-                        contact,
-                        password: password, // Store the password directly (should be hashed on the server side)
-                        vehicle_type: vehicleType,
-                        plate_number: plateNumber,
-                        status: 'Pending',
-                        created_at: new Date().toISOString()
-                    }])
-                    .select()
-                    .single();
-                
-                if (createError) {
-                    console.error('Database error:', createError);
-                    throw new Error('Failed to create account. Please try again.');
+                // 2️⃣ Create Supabase Auth user only if email doesn't exist
+                console.log('Creating Supabase Auth user...');
+                const { data: authData, error: authError } = await window.supabase.auth.signUp({
+                    email,
+                    password,
+                    options: { 
+                        data: { 
+                            name,
+                            user_type: 'rider'
+                        },
+                        // Use a relative path that will work in both development and production
+                        emailRedirectTo: '/rider-login.html'
+                    }
+                });
+
+                if (authError) {
+                    console.error('Auth error:', authError);
+                    // Handle specific error for duplicate email in auth
+                    if (authError.message.includes('already registered')) {
+                        throw new Error('This email is already registered. Please use a different email or try logging in.');
+                    }
+                    throw authError;
                 }
 
-                console.log('Rider account created successfully');
-                const riderData = newRider;
-                console.log('Rider profile created successfully');
+                const authUser = authData.user;
+                console.log('Auth user created:', authUser);
+
+                // Auth user has been successfully created, proceed to create rider profile
+                console.log('Auth user successfully created. Proceeding to create rider profile...');
+                
+                // Add a small delay to ensure auth is fully processed
+                await new Promise(r => setTimeout(r, 500));
+                
+                const { data: rider, error: insertError } = await window.supabase
+                    .rpc('create_rider_profile', {
+                        p_name: name,
+                        p_email: email,
+                        p_contact: contact,
+                        p_vehicle_type: vehicleType,
+                        p_plate_number: plateNumber,
+                        p_status: 'Pending',
+                        p_auth_user_id: authUser.id
+                    });
+
+                // Since RPC returns an array, get the first item
+                const riderData = Array.isArray(rider) ? rider[0] : rider;
+
+                if (insertError) {
+                    console.error('Database error:', insertError);
+                    // Log the error for admin review
+                    console.error('Orphaned auth user created. Auth ID:', authUser.id);
+                    // Inform the user to contact support
+                    throw new Error('Account created but profile setup failed. Please contact support and reference: ' + authUser.id.substring(0, 8));
+                }
+
+                console.log('Rider profile created successfully:', riderData);
+
+                // Sign out the user immediately to prevent auto-login
+                await window.supabase.auth.signOut();
 
                 // Show success message
-                showNotification('Account created successfully! Please check your email to verify your account.', 'success');
-                
-                // Show verification modal
-                document.getElementById('verificationModal').style.display = 'flex';
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Registration Successful!',
+                    html: `
+                        <p>Your account has been created successfully.</p>
+                        <p><strong>Please wait for admin approval before logging in.</strong></p>
+                        <p>You will receive an email notification once your account is approved.</p>
+                    `,
+                    confirmButtonText: 'Go to Login',
+                    confirmButtonColor: '#1d3a6b'
+                }).then(() => {
+                    window.location.href = 'rider-login.html';
+                });
                 
                 // Reset form
                 event.target.reset();
@@ -452,14 +555,23 @@
             } catch (error) {
                 console.error('Signup error:', error);
                 showNotification(error.message || 'An error occurred during signup', 'error');
-                
+            } finally {
                 // Re-enable the signup button
                 if (signupBtn) {
                     signupBtn.disabled = false;
                     signupBtn.innerHTML = 'Sign Up';
                 }
+                isSubmitting = false;
             }
         }
+
+        // Add form submission handler after DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            const signupForm = document.getElementById('signupForm');
+            if (signupForm) {
+                signupForm.addEventListener('submit', signup);
+            }
+        });
         
         // Real-time password match validation
         document.getElementById('confirmPassword').addEventListener('input', function() {
