@@ -1296,6 +1296,25 @@
             background-color: var(--success);
             color: white;
         }
+        
+        .action-btn.btn-move-history {
+            background-color: #6c5ce7;
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 4px;
+        }
+        
+        .action-btn.btn-move-history:hover:not(.disabled) {
+            background-color: #5a4bcf;
+        }
+        
+        .action-btn.btn-move-history.disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            background-color: #b2b2b2;
+        }
 
         /* Add this style in the <style> section */
         .payment-reference {
@@ -1310,8 +1329,40 @@
         .action-buttons {
             display: flex;
             flex-direction: column;
-            gap: 4px;
-            align-items: center;
+            gap: 5px;
+            min-width: 120px;  /* Ensure minimum width for actions column */
+        }
+        
+        /* Ensure actions column is wide enough and always visible */
+        #confirmedOrderTable th:last-child,
+        #confirmedOrderTable td:last-child {
+            min-width: 160px;
+            max-width: 160px;
+            width: 160px;
+            white-space: nowrap;
+            position: sticky;
+            right: 0;
+            background-color: var(--card-bg);
+            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+        
+        /* Make sure the header stays on top when scrolling */
+        #confirmedOrderTable th:last-child {
+            z-index: 20;
+            background-color: var(--primary);
+        }
+        
+        /* Add some padding to the action buttons */
+        .action-buttons {
+            padding: 5px 0;
+        }
+        
+        /* Make action buttons full width of their container */
+        .action-btn {
+            width: 100%;
+            box-sizing: border-box;
+            text-align: center;
         }
 
         /* Add tooltip for truncated email */
@@ -1552,6 +1603,7 @@
                             <th>Address</th>
                             <th>Landmarks</th>
                             <th>Order</th>
+                            <th>Total</th>
                             <th>Paid Amount</th>
                             <th>Payment Proof</th>
                             <th>Payment Type</th>
@@ -1590,6 +1642,7 @@
                             <th>Address</th>
                             <th>Landmarks</th>
                             <th>Order</th>
+                            <th>Total</th>
                             <th>Balance</th>
                             <th>Payment Proof</th>
                             <th>Payment Type</th>
@@ -1636,6 +1689,7 @@
                             <th>Address</th>
                             <th>Landmarks</th>
                             <th>Order</th>
+                            <th>Total</th>
                             <th>Initial Payment</th>
                             <th>Final Payment</th>
                             <th>Payment Proof</th>
@@ -1864,11 +1918,12 @@
             }
 
             try {
-                // Verify session in Supabase
+                // Verify session in Supabase using just the session ID
                 const { data: session, error } = await supabase
                     .from('admin_sessions')
                     .select('*')
                     .eq('id', adminSessionId)
+                    .gte('expires_at', new Date().toISOString())
                     .single();
 
                 if (error) {
@@ -1877,9 +1932,10 @@
                 }
 
                 if (!session) {
-                    // Session not found
+                    // Session not found or expired
                     localStorage.removeItem('adminSessionId');
                     localStorage.removeItem('isAdminLoggedIn');
+                    localStorage.removeItem('adminUsername');
                     window.location.href = 'admin-login.html';
                     return;
                 }
@@ -1892,21 +1948,24 @@
 
             } catch (error) {
                 console.error('Session check error:', error);
-                // Only redirect if it's a session-related error
-                if (error.message.includes('session') || error.message.includes('auth')) {
-                    localStorage.removeItem('adminSessionId');
-                    localStorage.removeItem('isAdminLoggedIn');
-                    window.location.href = 'admin-login.html';
-                }
+                localStorage.removeItem('adminSessionId');
+                localStorage.removeItem('isAdminLoggedIn');
+                localStorage.removeItem('adminUsername');
+                window.location.href = 'admin-login.html';
             }
         }
 
         // Check session on page load
         checkAdminSession();
 
-        // Brevo Email Configuration
-        const brevoApiKey = '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'; // Replace with your actual Brevo API key
-        const brevoUrl = 'https://api.brevo.com/v3/smtp/email';
+        // Brevo Email Configuration - loaded from supabase-config.js
+        const brevoConfig = window.brevoConfig || {};
+        const brevoApiKey = brevoConfig.apiKey || '';
+        const brevoUrl = brevoConfig.apiUrl || 'https://api.brevo.com/v3/smtp/email';
+        
+        if (!brevoApiKey) {
+            console.error('Brevo API key is not set. Please check your configuration.');
+        }
         
         // Initialize data structures
         let ordersByYear = {};
@@ -1962,6 +2021,22 @@
                 }
             }
         });
+        }
+
+        // Update monthly sales chart
+        function updateMonthlySalesChart(monthlySales) {
+            if (!salesChart) return;
+            
+            // Update existing chart data
+            salesChart.data.datasets[0].data = monthlySales;
+            
+            // Update the chart
+            salesChart.update('none'); // 'none' prevents animation which can cause flicker
+            
+            // Force a reflow to ensure the chart updates properly
+            setTimeout(() => {
+                salesChart.resize();
+            }, 0);
         }
 
         // Initialize application
@@ -2074,6 +2149,7 @@
                 const { data: orders, error } = await supabase
                     .from('order_history')
                     .select('*')
+                    .neq('status', 'Denied') // Exclude denied orders
                     .gte('date', `${currentYear}-01-01`)
                     .lte('date', `${currentYear}-12-31`);
 
@@ -2121,9 +2197,11 @@
         async function calculateDashboardData() {
             try {
                 // Get orders from order_history for the selected year
+                // Exclude denied orders from dashboard calculations
                 const { data: orders, error } = await supabase
                     .from('order_history')
                     .select('*')
+                    .neq('status', 'Denied') // Exclude denied orders
                     .gte('date', `${currentYear}-01-01`)
                     .lte('date', `${currentYear}-12-31`);
 
@@ -2289,6 +2367,7 @@
                         <td>${order.address}</td>
                         <td>${order.landmarks || 'None'}</td>
                         <td>${order.order_items}</td>
+                        <td>₱${(order.total_price || order.total_amount || 0).toLocaleString()}</td>
                         <td>₱${order.paid_amount.toLocaleString()}</td>
                         <td><span class="payment-reference">${order.payment_proof}</span></td>
                         <td><span class="payment-type ${paymentTypeClass}">${paymentTypeText}</span></td>
@@ -2316,9 +2395,10 @@
         // Render confirmed orders
         async function renderConfirmedOrders(searchTerm = '') {
             try {
+                // First, get all orders
                 let query = supabase
                     .from('orders')
-                    .select('*, riders(name, status, contact, vehicle_type)')
+                    .select('*')
                     .in('status', ['Preparing', 'Delivery', 'Delivered'])
                     .order('updated_at', { ascending: false });
             
@@ -2333,26 +2413,29 @@
                         `landmarks.ilike.%${searchTerm}%,` +
                         `order_items.ilike.%${searchTerm}%`
                     );
-
-                    // Search in riders table using a different approach
-                    const { data: riderOrders, error: riderError } = await supabase
-                        .from('orders')
-                        .select('id')
-                        .eq('status', 'Preparing')
-                        .or('status.eq.Delivery,status.eq.Delivered')
-                        .order('updated_at', { ascending: false });
-
-                    if (riderError) throw riderError;
-
-                    if (riderOrders && riderOrders.length > 0) {
-                        const orderIds = riderOrders.map(order => order.id);
-                        query = query.in('id', orderIds);
-                    }
                 }
 
                 const { data: orders, error } = await query;
-
                 if (error) throw error;
+
+                // Get all unique rider IDs from orders
+                const riderIds = [...new Set(orders.map(order => order.assigned_rider_id).filter(Boolean))];
+                let ridersMap = new Map();
+
+                // If there are riders, fetch their details
+                if (riderIds.length > 0) {
+                    const { data: riders, error: ridersError } = await supabase
+                        .from('riders')
+                        .select('*')
+                        .in('id', riderIds);
+                    
+                    if (ridersError) throw ridersError;
+                    
+                    // Create a map of rider ID to rider details
+                    riders.forEach(rider => {
+                        ridersMap.set(rider.id, rider);
+                    });
+                }
             
                 const confirmedOrderTable = document.querySelector('#confirmedOrderTable tbody');
                 confirmedOrderTable.innerHTML = '';
@@ -2382,45 +2465,70 @@
                     const paymentTypeClass = order.payment_type === 'downPayment' ? 'payment-down' : 'payment-full';
                     const paymentTypeText = order.payment_type === 'downPayment' ? 'DP' : 'FP';
                     
+                    // Get rider info from our map
                     let assignedRiderInfo = 'Not assigned';
-                    if (order.assigned_rider_id && order.riders) {
-                        const rider = order.riders;
-                        assignedRiderInfo = `${rider.name} (${rider.status}) - ${rider.vehicle_type}`;
+                    if (order.assigned_rider_id && ridersMap.has(order.assigned_rider_id)) {
+                        const rider = ridersMap.get(order.assigned_rider_id);
+                        assignedRiderInfo = `${rider.name} (${rider.status || 'N/A'}) - ${rider.vehicle_type || 'N/A'}`;
                     }
                     
                     const timestamp = order.updated_at ? `<span class="timestamp">Last Updated: ${formatTimestamp(order.updated_at)}</span>` : '';
                 
                     const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${highlightText(order.transaction_id, searchTerm)}</td>
-                        <td>${highlightText(order.name, searchTerm)}${timestamp}</td>
-                        <td>+63${highlightText(order.contact, searchTerm)}</td>
-                        <td title="${order.email}">${highlightText(order.email, searchTerm)}</td>
-                        <td>${order.date}</td>
-                        <td>${order.time}</td>
-                        <td>${highlightText(order.address, searchTerm)}</td>
-                        <td>${highlightText(order.landmarks || 'None', searchTerm)}</td>
-                        <td>${highlightText(order.order_items, searchTerm)}</td>
-                        <td>₱${order.paid_amount.toLocaleString()}</td>
-                        <td><span class="payment-reference">${order.payment_proof}</span></td>
-                        <td><span class="payment-type ${paymentTypeClass}">${paymentTypeText}</span></td>
-                        <td><span class="status-badge ${statusClass}">${statusText}</span></td>
-                        <td>${highlightText(assignedRiderInfo, searchTerm)}</td>
-                        <td>
+                    
+                    // Create cells in the exact order of the table headers
+                    const cells = [
+                        // Transaction ID
+                        `<td>${highlightText(order.transaction_id, searchTerm)}</td>`,
+                        // Name
+                        `<td>${highlightText(order.name, searchTerm)}${timestamp}</td>`,
+                        // Contact
+                        `<td>+63${highlightText(order.contact, searchTerm)}</td>`,
+                        // Email
+                        `<td title="${order.email}">${highlightText(order.email, searchTerm)}</td>`,
+                        // Date
+                        `<td>${order.date}</td>`,
+                        // Time
+                        `<td>${order.time}</td>`,
+                        // Address
+                        `<td>${highlightText(order.address, searchTerm)}</td>`,
+                        // Landmarks
+                        `<td>${highlightText(order.landmarks || 'None', searchTerm)}</td>`,
+                        // Order
+                        `<td>${highlightText(order.order_items, searchTerm)}</td>`,
+                        // Total
+                        `<td>₱${(order.total_price || order.total_amount || 0).toLocaleString()}</td>`,
+                        // Balance (using paid_amount as balance)
+                        `<td>₱${order.paid_amount.toLocaleString()}</td>`,
+                        // Payment Proof
+                        `<td><span class="payment-reference">${order.payment_proof || 'N/A'}</span></td>`,
+                        // Payment Type
+                        `<td><span class="payment-type ${paymentTypeClass}">${paymentTypeText}</span></td>`,
+                        // Status
+                        `<td><span class="status-badge ${statusClass}">${statusText}</span></td>`,
+                        // Rider
+                        `<td>${highlightText(assignedRiderInfo, searchTerm)}</td>`,
+                        // Actions (last column)
+                        `<td class="actions-cell">
                             <div class="action-buttons">
-                                <button class="action-btn btn-delivered" onclick="markAsDelivered('${order.id}')">
-                                    <i class="fas fa-check-circle"></i> Move to History
-                                </button>
-                                <button class="action-btn btn-deny" onclick="showCancelOrderModal('${order.id}')">
-                                    <i class="fas fa-times"></i> Cancel
+                                <button class="action-btn btn-move-history ${order.status !== 'Delivered' ? 'disabled' : ''}" 
+                                        onclick="if('${order.status}' === 'Delivered') markAsDelivered('${order.id}')">
+                                    <i class="fas fa-archive"></i> Move to History
                                 </button>
                             </div>
-                        </td>
-                    `;
+                        </td>`
+                    ];
+                    
+                    row.innerHTML = cells.join('');
                     confirmedOrderTable.appendChild(row);
                 });
 
-                calculateTotals(orders, 'confirmedOrderTotalOrders', 'confirmedOrderTotalLechonBellies');
+                // Update order count if element exists
+                const orderCountElement = document.getElementById('confirmedOrderCount');
+                if (orderCountElement) {
+                    orderCountElement.textContent = orders.length;
+                }
+                updateNotificationDot();
             } catch (error) {
                 console.error('Error rendering confirmed orders:', error);
                 showNotification('Error loading confirmed orders', 'error');
@@ -2430,9 +2538,10 @@
         // Render order history
         async function renderOrderHistory(searchTerm = '') {
             try {
+                // First, get all order history records
                 let query = supabase
                     .from('order_history')
-                    .select('*, riders(name)')
+                    .select('*')
                     .order('created_at', { ascending: false });
             
                 if (searchTerm) {
@@ -2446,47 +2555,70 @@
                         `landmarks.ilike.%${searchTerm}%,` +
                         `order_items.ilike.%${searchTerm}%`
                     );
-
-                    // Search in riders table using a different approach
-                    const { data: riderOrders, error: riderError } = await supabase
-                        .from('order_history')
-                        .select('order_id')
-                        .order('created_at', { ascending: false });
-
-                    if (riderError) throw riderError;
-
-                    if (riderOrders && riderOrders.length > 0) {
-                        const orderIds = riderOrders.map(order => order.order_id);
-                        query = query.in('order_id', orderIds);
-                    }
                 }
 
                 const { data: orders, error } = await query;
-
                 if (error) throw error;
+
+                // Get all unique rider IDs from orders
+                const riderIds = [...new Set(orders.map(order => order.assigned_rider_id).filter(Boolean))];
+                let ridersMap = new Map();
+
+                // If there are riders, fetch their details
+                if (riderIds.length > 0) {
+                    const { data: riders, error: ridersError } = await supabase
+                        .from('riders')
+                        .select('*')
+                        .in('id', riderIds);
+                    
+                    if (ridersError) throw ridersError;
+                    
+                    // Create a map of rider ID to rider details
+                    riders.forEach(rider => {
+                        ridersMap.set(rider.id, rider);
+                    });
+                }
             
                 const orderHistoryTable = document.querySelector('#orderHistoryTable tbody');
+                if (!orderHistoryTable) {
+                    console.error('Order history table not found');
+                    return;
+                }
                 orderHistoryTable.innerHTML = '';
 
                 orders.forEach(order => {
-                    const timestamp = order.created_at ? `<span class="timestamp">Delivered: ${formatTimestamp(order.created_at)}</span>` : '';
-                    const riderName = order.riders ? order.riders.name : 'Not assigned';
+                    // Check if order is denied
+                    const isDenied = order.status === 'Denied';
+                    const timestamp = order.created_at ? `<span class="timestamp">${isDenied ? 'Denied' : 'Delivered'}: ${formatTimestamp(order.created_at)}</span>` : '';
+                    
+                    // Get rider info from our map
+                    let riderName = 'Not assigned';
+                    if (order.assigned_rider_id && ridersMap.has(order.assigned_rider_id)) {
+                        const rider = ridersMap.get(order.assigned_rider_id);
+                        riderName = rider.name || 'N/A';
+                    } else if (isDenied) {
+                        riderName = 'N/A';
+                    }
+                    
+                    // Apply red color style for denied orders
+                    const rowStyle = isDenied ? 'style="color: #dc3545; font-weight: 500;"' : '';
                 
                     const row = document.createElement('tr');
                     row.innerHTML = `
-                        <td>${highlightText(order.transaction_id, searchTerm)}</td>
-                        <td>${highlightText(order.name, searchTerm)}${timestamp}</td>
-                        <td>+63${highlightText(order.contact, searchTerm)}</td>
-                        <td title="${order.email}">${highlightText(order.email, searchTerm)}</td>
-                        <td>${order.date}</td>
-                        <td>${order.time}</td>
-                        <td>${highlightText(order.address, searchTerm)}</td>
-                        <td>${highlightText(order.landmarks || 'None', searchTerm)}</td>
-                        <td>${highlightText(order.order_items, searchTerm)}</td>
-                        <td>₱${order.paid_amount.toLocaleString()}</td>
-                        <td>₱${order.balance.toLocaleString()}</td>
-                        <td><span class="payment-reference">${order.payment_proof}</span></td>
-                        <td>${highlightText(riderName, searchTerm)}</td>
+                        <td ${rowStyle}>${highlightText(order.transaction_id, searchTerm)}</td>
+                        <td ${rowStyle}>${highlightText(order.name, searchTerm)}${timestamp}</td>
+                        <td ${rowStyle}>+63${highlightText(order.contact, searchTerm)}</td>
+                        <td ${rowStyle} title="${order.email}">${highlightText(order.email, searchTerm)}</td>
+                        <td ${rowStyle}>${order.date}</td>
+                        <td ${rowStyle}>${order.time}</td>
+                        <td ${rowStyle}>${highlightText(order.address, searchTerm)}</td>
+                        <td ${rowStyle}>${highlightText(order.landmarks || 'None', searchTerm)}</td>
+                        <td ${rowStyle}>${highlightText(order.order_items, searchTerm)}</td>
+                        <td ${rowStyle}>₱${((order.paid_amount || 0) + (order.balance || 0)).toLocaleString()}</td>
+                        <td ${rowStyle}>₱${(order.paid_amount || 0).toLocaleString()}</td>
+                        <td ${rowStyle}>₱${(order.balance || 0).toLocaleString()}</td>
+                        <td ${rowStyle}><span class="payment-reference">${order.payment_proof}</span></td>
+                        <td ${rowStyle}>${highlightText(riderName, searchTerm)}</td>
                         <td>
                             <div class="action-buttons">
                                 <button class="action-btn btn-delete" onclick="deleteOrderFromHistory('${order.order_id}')">
@@ -2598,48 +2730,18 @@
             }
         }
 
-        // Confirm order function
+        // Confirm order function - just opens the modal without confirming
         async function confirmOrder(orderId) {
             try {
                 console.log('confirmOrder called with orderId:', orderId);
                 
-                // First, get the order details to include in the email
-                const { data: order, error: fetchError } = await supabase
-                    .from('orders')
-                    .select('*')
-                    .eq('id', orderId)
-                    .single();
-
-                if (fetchError) throw fetchError;
-                if (!order) {
-                    throw new Error('Order not found');
-                }
-
-                // Update order status using RPC to avoid policy issues
-                console.log('Updating order status via RPC...');
-                const { data: updateResult, error: rpcError } = await supabase.rpc('update_order_status', {
-                    p_order_id: orderId,
-                    p_status: 'confirmed',
-                    p_rider_id: null
-                });
-
-                console.log('RPC Update result:', { updateResult, rpcError });
-
-                if (rpcError) {
-                    console.error('RPC call failed:', rpcError);
-                    throw rpcError;
-                }
-                
-                // Show success notification
-                showNotification('Order confirmed successfully', 'success');
-
-                // Open the Assign Rider modal
+                // Just open the Assign Rider modal without confirming the order
+                // The actual confirmation will happen when user clicks "Confirm and Assign" in the modal
                 await showAssignRiderModal(orderId);
-                return;
                 
             } catch (error) {
                 console.error('Error in confirmOrder:', error);
-                showNotification('Error processing order confirmation: ' + (error.message || 'Unknown error'), 'error');
+                showNotification('Error opening rider assignment modal: ' + (error.message || 'Unknown error'), 'error');
             }
         }
 
@@ -2702,6 +2804,8 @@
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
                     modal.remove();
+                    // Refresh the order list when modal is closed without confirming
+                    renderOrderList();
                 }
             });
         }
@@ -2719,119 +2823,184 @@
                 
                 // First, try to send the email before updating the order status
                 // This helps avoid RLS recursion issues
+                let emailSent = false;
                 try {
-                    // Prepare order details for email
-                    const orderDetails = {
-                        reason: reason,
-                        additionalInfo: additionalInfo,
-                        orderId: order.transaction_id,
-                        date: new Date(order.date).toLocaleDateString(),
-                        items: order.order_items,
-                        totalAmount: order.total_amount ? `₱${order.total_amount.toFixed(2)}` : '₱0.00'
+                    console.log('Sending order denial email...');
+                    
+                    // Format order items for email
+                    let orderItemsText = order.order_items || 'No items specified';
+                    
+                    // Helper function to safely format dates
+                    const safeFormatDate = (dateValue, options) => {
+                        if (!dateValue) return 'Not specified';
+                        try {
+                            const date = new Date(dateValue);
+                            return isNaN(date.getTime()) ? 'Not specified' : date.toLocaleDateString('en-PH', options);
+                        } catch (e) {
+                            return 'Not specified';
+                        }
                     };
-
-                    // Send denial email first
-                    const emailSent = await sendOrderEmail(
-                        order.email,
-                        order.name,
-                        order.transaction_id,
-                        '2', // Using template ID 2 for order denied
-                        orderDetails
+                    
+                    // Prepare email details with proper template parameters
+                    const emailDetails = {
+                        orderId: order.id || 'N/A',
+                        transaction_id: order.transaction_id || `LL-${new Date().getTime()}`,
+                        name: order.name || order.customer_name || 'Customer',
+                        customerName: order.name || order.customer_name || 'Customer',
+                        customerEmail: order.email || order.customer_email || '',
+                        
+                        // Denial information
+                        denial_reason: reason,
+                        additional_info: additionalInfo,
+                        
+                        // Order details
+                        order_items: orderItemsText,
+                        date: safeFormatDate(order.date || order.created_at, { year: 'numeric', month: 'long', day: '2-digit' }),
+                        time: (() => {
+                            // Try to format time properly
+                            if (order.time) {
+                                try {
+                                    // Handle time-only strings (HH:MM:SS format)
+                                    if (typeof order.time === 'string' && order.time.match(/^\d{2}:\d{2}:\d{2}$/)) {
+                                        const [hours, minutes, seconds] = order.time.split(':');
+                                        const timeDate = new Date();
+                                        timeDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), parseInt(seconds || '0', 10), 0);
+                                        return timeDate.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', hour12: true });
+                                    }
+                                    // Handle full datetime strings
+                                    const time = new Date(order.time);
+                                    if (!isNaN(time.getTime())) {
+                                        return time.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', hour12: true });
+                                    }
+                                } catch (e) {
+                                    console.warn('Error formatting time:', e);
+                                }
+                            }
+                            return 'Not specified';
+                        })(),
+                        
+                        // Additional order information
+                        orderStatus: 'Denied',
+                        status: 'Denied'
+                    };
+                    
+                    const emailResult = await sendOrderEmail(
+                        emailDetails.customerEmail,
+                        emailDetails.customerName,
+                        emailDetails.transaction_id,
+                        2, // Template ID 2 for order denial
+                        emailDetails
                     );
 
-                    if (!emailSent) {
+                    if (emailResult) {
+                        console.log('Order denial email sent successfully');
+                        emailSent = true;
+                    } else {
+                        console.warn('Failed to send order denial email');
                         throw new Error('Failed to send denial email');
                     }
                 } catch (emailError) {
                     console.error('Email sending error:', emailError);
-                    // Continue with order denial even if email fails
-                    showNotification('Email sending failed, but proceeding with order denial', 'warning');
-                }
-                
-                console.log('Attempting to deny order:', order.id);
-                
-                // First, check if the order exists and get its current status
-                console.log('Checking order status before deletion...');
-                const { data: orderData, error: fetchError } = await supabase
-                    .from('orders')
-                    .select('*')
-                    .eq('id', order.id)
-                    .single();
-                
-                console.log('Current order status:', orderData ? orderData.status : 'Order not found');
-                
-                if (fetchError) {
-                    console.error('Error fetching order:', fetchError);
-                    throw fetchError;
-                }
-                
-                if (!orderData) {
-                    throw new Error('Order not found');
-                }
-                
-                // Try to delete the order directly
-                console.log('Attempting to delete order...');
-                const { data: deleteData, error: deleteError } = await supabase
-                    .from('orders')
-                    .delete()
-                    .eq('id', order.id)
-                    .select('*');
-
-                console.log('Delete result:', { 
-                    deleted: !!deleteData && deleteData.length > 0,
-                    data: deleteData,
-                    error: deleteError 
-                });
-                
-                // Check if the order still exists after deletion attempt
-                const { data: verifyData } = await supabase
-                    .from('orders')
-                    .select('id')
-                    .eq('id', order.id)
-                    .single();
-                    
-                console.log('Order still exists after deletion:', !!verifyData);
-
-                if (verifyData) {
-                    console.log('Delete failed, trying to update status instead:', deleteError);
-                    
-                    // If delete fails, try to mark as deleted
-                    console.log('Attempting to mark order as deleted...');
-                    const { data: updateData, error: updateError } = await supabase
-                        .from('orders')
-                        .update({ 
-                            status: 'Denied',
-                            updated_at: new Date().toISOString()
-                        })
-                        .eq('id', order.id)
-                        .select();
-
-                    console.log('Update result:', { updateData, updateError });
-
-                    if (updateError) {
-                        console.log('Update also failed, trying minimal update:', updateError);
-                        
-                        // Last resort: try updating just one field
-                        console.log('Attempting minimal update...');
-                        const { data: minimalData, error: minimalError } = await supabase
-                            .from('orders')
-                            .update({ status: 'Denied' })
-                            .eq('id', order.id)
-                            .select();
-                            
-                        console.log('Minimal update result:', { minimalData, minimalError });
-                            
-                        if (minimalError) {
-                            console.error('All update attempts failed:', minimalError);
-                            throw minimalError;
-                        }
+                    if (!emailSent) {
+                        // Continue with order denial even if email fails
+                        showNotification('Email sending failed, but proceeding with order denial', 'warning');
                     }
                 }
-
-                showNotification('Order has been denied successfully', 'success');
                 
-                // Refresh the order list
-                await renderOrderList();
+                console.log('Attempting to move denied order to history:', order.id);
+                
+                // Generate a UUID for the order history
+                const uuid = crypto.randomUUID();
+                
+                // Insert into order_history with status 'Denied'
+                const { error: historyError } = await supabase
+                    .from('order_history')
+                    .insert([
+                        {
+                            order_id: uuid,
+                            transaction_id: order.transaction_id,
+                            name: order.name,
+                            contact: order.contact,
+                            email: order.email,
+                            date: order.date,
+                            time: order.time,
+                            address: order.address,
+                            landmarks: order.landmarks,
+                            order_items: order.order_items,
+                            paid_amount: order.paid_amount,
+                            balance: order.balance || 0,
+                            payment_proof: order.payment_proof,
+                            status: 'Denied', // Mark as Denied
+                            created_at: new Date().toISOString(),
+                            rider_id: null // No rider assigned for denied orders
+                        }
+                    ]);
+
+                if (historyError) {
+                    console.error('Error inserting into order history:', historyError);
+                    throw historyError;
+                }
+
+                // Now delete from orders table
+                console.log('Deleting order with ID:', order.id, 'Type:', typeof order.id);
+                
+                // Delete the order using the numeric ID directly
+                const { error: deleteError } = await supabase
+                    .from('orders')
+                    .delete()
+                    .eq('id', order.id);
+                
+                if (deleteError) {
+                    console.error('Error deleting order:', deleteError);
+                    throw new Error('Failed to delete order: ' + deleteError.message);
+                }
+                
+                console.log('Order deleted successfully');
+
+                showNotification('Order denied and moved to Order History', 'success');
+                
+                // Force a complete refresh of the UI
+                const refreshUI = async () => {
+                    console.log('Refreshing order list...');
+                    
+                    // Clear any cached data
+                    if (window.localStorage) {
+                        const keys = Object.keys(localStorage).filter(key => 
+                            key.startsWith('sb-') || key.includes('orders') || key.includes('order_list')
+                        );
+                        keys.forEach(key => localStorage.removeItem(key));
+                    }
+                    
+                    // Force refresh the current tab
+                    const currentTab = document.querySelector('.tab-button.active')?.id.replace('-tab', '') || 'order-list';
+                    
+                    // Force refresh all order-related data
+                    await Promise.all([
+                        supabase.from('orders').select('*', { count: 'exact', head: true }),
+                        supabase.from('order_history').select('*', { count: 'exact', head: true })
+                    ]);
+                    
+                    // Re-render the current view
+                    if (currentTab === 'order-history') {
+                        await renderOrderHistory();
+                    } else {
+                        await renderOrderList();
+                    }
+                    
+                    // Update dashboard
+                    await calculateDashboardData();
+                    
+                    console.log('UI refresh complete');
+                };
+                
+                // Initial refresh
+                await refreshUI();
+                
+                // Additional refresh after a short delay to catch any race conditions
+                setTimeout(refreshUI, 1000);
+                
+                // Switch to Order History tab
+                openTab('order-history');
                 
             } catch (error) {
                 console.error('Error denying order:', error);
@@ -2979,7 +3148,9 @@
             }
 
             const riderId = selectedRider.value;
-            const riderName = selectedRider.text;
+            // Extract only the rider name without status (e.g., "Joryl Pulmones (Car)" from "Joryl Pulmones (Car) - On Delivery")
+            const fullRiderText = selectedRider.text;
+            const riderName = fullRiderText.includes(' - ') ? fullRiderText.split(' - ')[0] : fullRiderText;
 
             if (!orderId) {
                 console.error('[assignRiderToOrder] Missing orderId from hidden field');
@@ -3068,46 +3239,214 @@
                                 orderItems = [{
                                     name: order.order_items,
                                     quantity: 1,
-                                    price: order.total_amount || 0,
-                                    total: order.total_amount || 0
+                                    price: order.total_price || order.total_amount || 0,
+                                    total: order.total_price || order.total_amount || 0
                                 }];
                             }
                         } else if (Array.isArray(order.order_items)) {
                             orderItems = order.order_items;
+                        } else if (typeof order.items === 'string') {
+                            try {
+                                orderItems = JSON.parse(order.items);
+                                if (!Array.isArray(orderItems)) {
+                                    orderItems = [orderItems];
+                                }
+                            } catch (e) {
+                                console.warn('Error parsing order items:', e);
+                                orderItems = [{
+                                    name: 'Order Items',
+                                    quantity: 1,
+                                    price: order.total_price || order.total_amount || 0,
+                                    total: order.total_price || order.total_amount || 0
+                                }];
+                            }
                         }
                     } catch (e) {
-                        console.warn('Error processing order items:', e);
-                        orderItems = [];
+                        console.log('Attempting to delete order using numeric ID...');
+                        
+                        // Delete from orders table using the numeric ID
+                        const { error: deleteError } = await supabase
+                            .from('orders')
+                            .delete()
+                            .eq('id', order.id);
+                        
+                        if (deleteError) {
+                            console.error('Error deleting order:', deleteError);
+                            throw new Error('Failed to delete order: ' + deleteError.message);
+                        }
+                        
+                        console.log('Order deleted successfully');
                     }
 
+                    // Format dates for display
+                    const formatDate = (dateString) => {
+                        if (!dateString) return 'Not specified';
+                        try {
+                            const date = new Date(dateString);
+                            return isNaN(date.getTime()) ? 'Not specified' : date.toLocaleDateString('en-PH', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                            });
+                        } catch (e) {
+                            return 'Not specified';
+                        }
+                    };
+
+                    const formatTime = (timeString) => {
+                        if (!timeString) return 'Not specified';
+                        try {
+                            // Handle both full datetime strings and time-only strings
+                            let time = new Date(timeString);
+                            if (isNaN(time.getTime())) {
+                                // If it's just a time string like '14:30', create a date with today's date
+                                const [hours, minutes] = timeString.split(':');
+                                time = new Date();
+                                time.setHours(parseInt(hours, 10), parseInt(minutes || '0', 10), 0, 0);
+                            }
+                            return time.toLocaleTimeString('en-PH', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: true
+                            });
+                        } catch (e) {
+                            console.error('Error formatting time:', e);
+                            return 'Not specified';
+                        }
+                    };
+
+                    // Format order items for email
+                    let orderItemsText = 'No items in order';
+                    if (orderItems && orderItems.length > 0) {
+                        orderItemsText = orderItems.map(item => {
+                            // Remove the quantity prefix to avoid confusion
+                            let itemText = `${item.name}`;
+                            if (item.size) itemText += ` (${item.size})`;
+                            itemText += ` - ₱${(item.total || 0).toFixed(2)}`;
+                            
+                            // Add add-ons if any
+                            if (item.addons && item.addons.length > 0) {
+                                const addonsText = Array.isArray(item.addons) 
+                                    ? item.addons.map(a => a.name || a).join(', ')
+                                    : String(item.addons);
+                                itemText += `\n  - Add-ons: ${addonsText}`;
+                            }
+                            
+                            return itemText;
+                        }).join('\n\n');
+                    }
+
+                    // Prepare order details for email with comprehensive fallbacks
                     const emailOrderDetails = {
-                        deliveryAddress: order.delivery_address || 'Not specified',
-                        items: orderItems,
-                        deliveryDate: order.delivery_date || 'Not specified',
-                        deliveryTime: order.delivery_time || 'Not specified',
-                        total: order.total_amount || 0,
-                        paymentMethod: order.payment_method || 'Not specified',
+                        // Basic order info with transaction ID
+                        orderId: order.id || 'N/A',
+                        transaction_id: order.transaction_id || `LL-${new Date().toISOString().slice(2, 10).replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`,
+                        
+                        // Customer information
+                        customerName: order.name || order.customer_name || order.customerName || 
+                                    (order.first_name && order.last_name ? `${order.first_name} ${order.last_name}` : 'Valued Customer'),
+                        customerEmail: order.email || order.customer_email || order.customerEmail || '',
+                        customerPhone: order.phone || order.customer_phone || order.customerPhone || 
+                                     order.contact || order.phone_number || 'Not specified',
+                        name: order.name || order.customer_name || 'Valued Customer',
+                        email: order.email || order.customer_email || '',
+                        phone: order.phone || order.customer_phone || order.contact || 'Not specified',
+                        contact: order.phone || order.customer_phone || order.contact || 'Not specified',
+                        
+                        // Order status
                         orderStatus: 'Confirmed & Assigned',
-                        orderDate: order.created_at ? new Date(order.created_at).toLocaleDateString() : 'Not specified',
-                        orderTime: order.created_at ? new Date(order.created_at).toLocaleTimeString() : 'Not specified',
-                        riderName: riderName || 'Our delivery partner'
+                        status: 'Confirmed',
+                        order_status: 'Confirmed & Assigned',
+                        
+                        // Delivery information with multiple fallback options
+                        deliveryAddress: order.delivery_address || order.shipping_address || 
+                                      order.address || order.shippingAddress || 'Not specified',
+                        address: order.delivery_address || order.shipping_address || order.address || 'Not specified',
+                        shipping_address: order.delivery_address || order.shipping_address || order.address || 'Not specified',
+                                      
+                        deliveryDate: order.delivery_date || order.estimated_delivery_date || 
+                                    order.date || order.order_date || order.created_at,
+                        delivery_date: order.delivery_date || order.estimated_delivery_date || order.date || order.created_at,
+                        estimated_delivery_date: order.delivery_date || order.estimated_delivery_date || order.date || order.created_at,
+                                      
+                        deliveryTime: order.delivery_time || order.estimated_delivery_time || 
+                                    order.time || order.order_time || order.created_at,
+                        delivery_time: order.delivery_time || order.estimated_delivery_time || order.time || order.created_at,
+                        estimated_delivery_time: order.delivery_time || order.estimated_delivery_time || order.time || order.created_at,
+                        
+                        // Order items - use the formatted text we prepared
+                        items: orderItems,
+                        order_items: orderItems,
+                        
+                        // Payment information with fallbacks
+                        payment_method: order.payment_method || order.payment_type || order.paymentMethod || 'Not specified',
+                        paymentMethod: order.payment_method || order.payment_type || 'Not specified',
+                        payment_type: order.payment_method || order.payment_type || 'Not specified',
+                        
+                        payment_status: order.payment_status || order.paymentStatus || (order.status === 'paid' ? 'Paid' : 'Pending'),
+                        paymentStatus: order.payment_status || (order.status === 'paid' ? 'Paid' : 'Pending'),
+                        
+                        // Rider information
+                        riderName: riderName || order.rider_name || 'Our delivery partner',
+                        rider_name: riderName || order.rider_name || 'Our delivery partner',
+                        
+                        // Financial information
+                        total_price: order.total_price || order.total_amount || order.total || order.amount || 0,
+                        total_amount: order.total_price || order.total_amount || order.total || order.amount || 0,
+                        total: order.total_price || order.total_amount || order.total || order.amount || 0,
+                        amount: order.total_price || order.total_amount || order.total || order.amount || 0,
+                        
+                        // Payment information - include paid amount for remaining balance calculation
+                        paid_amount: order.paid_amount || order.paidAmount || order.down_payment || order.downPayment || 0,
+                        paidAmount: order.paid_amount || order.paidAmount || 0,
+                        down_payment: order.paid_amount || order.down_payment || 0,
+                        
+                        subtotal: order.subtotal || 
+                                 (order.total_amount && order.delivery_fee ? 
+                                 order.total_amount - order.delivery_fee : order.total_amount || 0),
+                        
+                        delivery_fee: order.delivery_fee || order.deliveryFee || order.shipping_fee || 0,
+                        deliveryFee: order.delivery_fee || order.deliveryFee || 0,
+                        shipping_fee: order.delivery_fee || order.shipping_fee || 0,
+                        
+                        // Additional order details
+                        notes: order.notes || order.special_instructions || order.specialInstructions || order.comments || 'None',
+                        special_instructions: order.notes || order.special_instructions || 'None',
+                        comments: order.notes || order.comments || 'None',
+                        
+                        // Timestamps
+                        created_at: order.created_at || new Date().toISOString(),
+                        date: order.date || order.created_at || new Date().toISOString(),
+                        orderDate: order.date || order.order_date || order.created_at || new Date().toISOString(),
+                        order_date: order.date || order.order_date || order.created_at,
+                        
+                        time: order.time || order.created_at || new Date().toISOString(),
+                        orderTime: order.time || order.order_time || order.created_at || new Date().toISOString(),
+                        order_time: order.time || order.order_time || order.created_at
                     };
                     
-                    console.log('Prepared email details:', { 
-                        ...emailOrderDetails, 
-                        items: orderItems // Log items separately for debugging
-                    });
+                    console.log('Prepared email details:', JSON.stringify({
+                        ...emailOrderDetails,
+                        items: `[${orderItems.length} items]` // Don't log full items array to avoid cluttering console
+                    }, null, 2));
 
                     // Email order details are now ready to be used
                     console.log('Email order details prepared:', JSON.stringify(emailOrderDetails, null, 2));
 
                     // Send confirmation email
                     console.log('Attempting to send confirmation email...');
+                    console.log('Email details being passed:', {
+                        email: emailOrderDetails.customerEmail,
+                        name: emailOrderDetails.customerName,
+                        transaction_id: emailOrderDetails.transaction_id,
+                        templateId: 1
+                    });
+                    
                     try {
                         const emailSent = await sendOrderEmail(
-                            order.email,
-                            order.customer_name || 'Customer',
-                            order.transaction_id,
+                            emailOrderDetails.customerEmail,
+                            emailOrderDetails.customerName,
+                            emailOrderDetails.transaction_id,
                             1, // Template ID for Order Confirmed
                             emailOrderDetails
                         );
@@ -3338,55 +3677,32 @@
                 if (pendingRiders && pendingRiders.length > 0) {
                     // Show notification dot on Riders tab
                     const ridersTab = document.querySelector('.tab-btn[onclick="openTab(\'riders\')"]');
-                    let notificationDot = ridersTab.querySelector('.notification-dot');
-                    if (!notificationDot) {
-                        notificationDot = document.createElement('div');
-                        notificationDot.className = 'notification-dot';
-                        ridersTab.appendChild(notificationDot);
+                    if (ridersTab) {
+                        let notificationDot = ridersTab.querySelector('.notification-dot');
+                        if (!notificationDot) {
+                            notificationDot = document.createElement('div');
+                            notificationDot.className = 'notification-dot';
+                            ridersTab.appendChild(notificationDot);
+                        }
+                        notificationDot.style.display = 'block';
+                        notificationDot.textContent = pendingRiders.length;
+                        notificationDot.title = `${pendingRiders.length} pending riders awaiting approval`;
                     }
-                    notificationDot.style.display = 'block';
 
-                    // Show system notification
-                    showSystemNotification(
-                        'New Rider Signup',
-                        `${pendingRiders[0].name} is waiting for verification`
-                    );
-
-                    // Show verification modal for the most recent pending rider
-                    showRiderVerificationModal(pendingRiders[0]);
-                }
-
-                // Check order status updates
-                const { data: orders, error: orderError } = await supabase
-                    .from('orders')
-                    .select('created_at, status, updated_at, assigned_rider_id, riders(status)')
-                    .gt('updated_at', lastOrderStatusUpdateTime || new Date(0).toISOString())
-                    .order('updated_at', { ascending: false });
-
-                if (orderError) {
-                    console.error('Error checking order status:', orderError);
-                    return;
-                }
-
-                if (orders && orders.length > 0) {
-                    lastOrderStatusUpdateTime = orders[0].updated_at;
-                    localStorage.setItem('lastOrderStatusUpdateTime', lastOrderStatusUpdateTime);
-                    
-                    // Update the appropriate tab based on which is active
-                    const activeTab = document.querySelector('.tab-content.active').id;
-                    if (activeTab === 'confirmed-order') {
-                        await renderConfirmedOrders();
-                    } else if (activeTab === 'order-list') {
-                        await renderOrderList();
-                    } else if (activeTab === 'riders') {
-                        await renderRiders();
-                    } else if (activeTab === 'dashboard') {
-                        await calculateDashboardData();
-                        await updateMonthlyTotal();
+                    // Show system notification for the most recent pending rider
+                    if (pendingRiders[0]?.name) {
+                        showSystemNotification(
+                            'New Rider Signup',
+                            `${pendingRiders[0].name} is waiting for verification`
+                        );
                     }
-                    
-                    updateNotificationDot();
                 }
+
+                // Update dashboard data and notification dots
+                await calculateDashboardData();
+                await updateMonthlyTotal();
+                updateNotificationDot();
+                
             } catch (error) {
                 console.error('Error checking for status updates:', error);
             }
@@ -3621,10 +3937,10 @@
         // Mark order as delivered
         async function markAsDelivered(orderId) {
             try {
-                // Get the order first to check if it has an assigned rider
+                // First get the order
                 const { data: order, error: fetchError } = await supabase
                     .from('orders')
-                    .select('*, riders(name)')
+                    .select('*')
                     .eq('id', orderId)
                     .single();
             
@@ -3638,6 +3954,20 @@
                 if (order.status !== 'Delivered') {
                     showNotification('Order must be marked as Delivered by the rider first', 'error');
                     return;
+                }
+                
+                // Get rider info separately if there's an assigned rider
+                let riderName = null;
+                if (order.assigned_rider_id) {
+                    const { data: rider, error: riderError } = await supabase
+                        .from('riders')
+                        .select('name')
+                        .eq('id', order.assigned_rider_id)
+                        .single();
+                    
+                    if (!riderError && rider) {
+                        riderName = rider.name;
+                    }
                 }
 
                 // First, delete from delivery_history if it exists
@@ -3653,29 +3983,31 @@
                 // Generate a UUID for the order history
                 const uuid = crypto.randomUUID();
                 
-                // Insert into order_history with UUID and status
+                // Prepare history data
+                const historyData = {
+                    order_id: uuid,
+                    transaction_id: order.transaction_id,
+                    name: order.name,
+                    contact: order.contact,
+                    email: order.email,
+                    date: order.date,
+                    time: order.time,
+                    address: order.address,
+                    landmarks: order.landmarks,
+                    order_items: order.order_items,
+                    paid_amount: order.paid_amount,
+                    balance: order.balance,
+                    payment_proof: order.payment_proof,
+                    status: 'Delivered',
+                    created_at: new Date().toISOString(),
+                    rider_id: order.assigned_rider_id,
+                    rider_name: riderName // Add the rider's name to the history
+                };
+                
+                // Insert into order_history
                 const { error: historyError } = await supabase
                     .from('order_history')
-                    .insert([
-                        {
-                            order_id: uuid,
-                            transaction_id: order.transaction_id,
-                            name: order.name,
-                            contact: order.contact,
-                            email: order.email,
-                            date: order.date,
-                            time: order.time,
-                            address: order.address,
-                            landmarks: order.landmarks,
-                            order_items: order.order_items,
-                            paid_amount: order.paid_amount,
-                            balance: order.balance,
-                            payment_proof: order.payment_proof,
-                            status: 'Delivered',
-                            created_at: new Date().toISOString(),
-                            rider_id: order.assigned_rider_id // Add the rider_id to the history record
-                        }
-                    ]);
+                    .insert([historyData]);
 
                 if (historyError) {
                     console.error('Error inserting into order history:', historyError);
@@ -3963,6 +4295,9 @@
         function closeAssignRiderModal() {
             document.getElementById('assignRiderModal').style.display = 'none';
             currentOrderForAssignment = null;
+            
+            // Refresh the order list to ensure the order is still shown as pending
+            renderOrderList();
         }
 
         async function deleteRider(riderId) {
@@ -4099,9 +4434,10 @@
             try {
                 let lastRiderUpdateTime = localStorage.getItem('lastRiderUpdateTime') || new Date(0).toISOString();
 
+                // Query riders with updated_at filter
                 const { data: riders, error: riderError } = await supabase
                     .from('riders')
-                    .select('*, rider_sessions(last_active)')
+                    .select('*')
                     .gt('updated_at', lastRiderUpdateTime)
                     .order('updated_at', { ascending: false });
 
@@ -4118,7 +4454,7 @@
                     await renderRiders();
                     
                     // If on confirmed orders tab, also update that view
-                    const activeTab = document.querySelector('.tab-content.active').id;
+                    const activeTab = document.querySelector('.tab-content.active')?.id;
                     if (activeTab === 'confirmed-order') {
                         await renderConfirmedOrders();
                     }
@@ -4289,69 +4625,6 @@
             }
         }
 
-        // Add these new functions for rider verification
-        let currentPendingRider = null;
-
-        function showRiderVerificationModal(rider) {
-            currentPendingRider = rider;
-            document.getElementById('verificationName').textContent = rider.name;
-            document.getElementById('verificationEmail').textContent = rider.email;
-            document.getElementById('verificationContact').textContent = `+63${rider.contact}`;
-            document.getElementById('verificationVehicle').textContent = rider.vehicle_type;
-            document.getElementById('verificationPlate').textContent = rider.plate_number || 'N/A';
-            document.getElementById('riderVerificationModal').style.display = 'flex';
-        }
-
-        function closeRiderVerificationModal() {
-            document.getElementById('riderVerificationModal').style.display = 'none';
-            currentPendingRider = null;
-        }
-
-        async function acceptRider() {
-            if (!currentPendingRider) return;
-
-            try {
-                const { error } = await supabase
-                    .from('riders')
-                    .update({ 
-                        status: 'Not Available',
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', currentPendingRider.id);
-
-                if (error) throw error;
-
-                showNotification('Rider accepted successfully', 'success');
-                closeRiderVerificationModal();
-                await renderRiders();
-            } catch (error) {
-                console.error('Error accepting rider:', error);
-                showNotification('Error accepting rider', 'error');
-            }
-        }
-
-        async function denyRider() {
-            if (!currentPendingRider) return;
-
-            try {
-                const { error } = await supabase
-                    .from('riders')
-                    .delete()
-                    .eq('id', currentPendingRider.id);
-
-                if (error) throw error;
-
-                showNotification('Rider denied successfully', 'success');
-                closeRiderVerificationModal();
-                await renderRiders();
-            } catch (error) {
-                console.error('Error denying rider:', error);
-                showNotification('Error denying rider', 'error');
-            }
-        }
-
-        // Add these new functions after the existing functions
-
         // Debug function to track order status and position
         async function debugOrderStatus(orderId) {
             if (!orderId) {
@@ -4505,35 +4778,212 @@
                 }
                 
                 // Brevo API endpoint
-                const brevoUrl = 'https://api.brevo.com/v3/smtp/email';
-                
-                // Get API key
-                const brevoApiKey = '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';
+                // Get Brevo configuration from global config
+                const brevoConfig = window.brevoConfig || {};
+                const brevoUrl = brevoConfig.apiUrl || 'https://api.brevo.com/v3/smtp/email';
+                const brevoApiKey = brevoConfig.apiKey || '';
                 
                 console.log('Using Brevo API key:', brevoApiKey ? '*** (key exists)' : 'MISSING');
                 
-                if (!brevoApiKey || brevoApiKey === 'YOUR_BREVO_API_KEY') {
-                    const errorMsg = 'Brevo API key is not properly configured';
+                if (!brevoApiKey) {
+                    const errorMsg = 'Brevo API key is not properly configured. Please check your configuration.';
                     console.error(errorMsg);
                     throw new Error(errorMsg);
                 }
                 
                 // Format order items for the email
-                const orderItems = orderDetails.items && Array.isArray(orderDetails.items) 
-                    ? orderDetails.items.map(item => {
-                        const itemName = item.product_name || item.name || 'Item';
-                        const quantity = item.quantity || 1;
-                        const price = item.price || 0;
-                        const total = item.total || (price * quantity);
-                        const size = item.size ? ` (${item.size})` : '';
-                        const addons = item.addons && item.addons.length > 0 
-                            ? `\n  - Add-ons: ${Array.isArray(item.addons) ? item.addons.map(a => a.name || a).join(', ') : item.addons}` 
-                            : '';
-                        return `${quantity}x ${itemName}${size} - ₱${total.toFixed(2)}${addons}`;
-                    }).join('\n\n')
-                    : 'No items in order';
+                let orderItems = [];
+                let orderItemsText = '';
+                
+                // If orderDetails.items is a string, try to parse it as JSON
+                if (typeof orderDetails.items === 'string') {
+                    try {
+                        orderItems = JSON.parse(orderDetails.items);
+                        if (!Array.isArray(orderItems)) {
+                            orderItems = [orderItems];
+                        }
+                    } catch (e) {
+                        // If parsing fails, treat as a simple string
+                        orderItems = [{
+                            name: orderDetails.items,
+                            quantity: 1,
+                            price: orderDetails.total_price || orderDetails.total || 0,
+                            total: orderDetails.total_price || orderDetails.total || 0
+                        }];
+                    }
+                } 
+                // If it's already an array, use it directly
+                else if (Array.isArray(orderDetails.items)) {
+                    orderItems = orderDetails.items.map(item => ({
+                        name: item.product_name || item.name || 'Item',
+                        quantity: item.quantity || 1,
+                        price: item.price || 0,
+                        total: item.total || (item.price * (item.quantity || 1)) || 0,
+                        size: item.size || '',
+                        addons: item.addons || []
+                    }));
+                }
+                // Check if orderDetails.order_items exists (for denial emails)
+                else if (typeof orderDetails.order_items === 'string') {
+                    // For denial emails, order_items is a simple string like "XL x 1, XXL x 1, XXXL x 1"
+                    const itemStrings = orderDetails.order_items.split(', ');
+                    orderItems = itemStrings.map(itemString => {
+                        const parts = itemString.trim().split(' x ');
+                        const size = parts[0] || 'Item';
+                        const quantity = parseInt(parts[1]) || 1;
+                        
+                        // Get price based on size
+                        const price = getPriceForSize(size) || 0;
+                        const total = price * quantity;
+                        
+                        return {
+                            name: size,
+                            quantity: quantity,
+                            price: price,
+                            total: total,
+                            size: size
+                        };
+                    });
+                }
+                
+                // Create a text version of order items for the email
+                if (orderItems.length > 0) {
+                    orderItemsText = orderItems.map(item => {
+                        // Remove the quantity prefix to avoid confusion
+                        let itemText = `${item.name}`;
+                        if (item.size) itemText += ` (${item.size})`;
+                        itemText += ` - ₱${(item.total || 0).toFixed(2)}`;
+                        
+                        // Add add-ons if any
+                        if (item.addons && item.addons.length > 0) {
+                            const addonsText = Array.isArray(item.addons) 
+                                ? item.addons.map(a => a.name || a).join(', ')
+                                : String(item.addons);
+                            itemText += `\n  - Add-ons: ${addonsText}`;
+                        }
+                        
+                        return itemText;
+                    }).join('\n\n');
+                } else {
+                    orderItemsText = 'No items in order';
+                }
                 
                 // Prepare the email data with template parameters
+                // Helper function to safely format dates
+                const safeFormatDate = (dateValue, options) => {
+                    if (!dateValue) return 'Not specified';
+                    try {
+                        // Handle time-only strings (HH:MM:SS format)
+                        if (typeof dateValue === 'string' && dateValue.match(/^\d{2}:\d{2}:\d{2}$/)) {
+                            // This is a time-only string, create a date object for today with this time
+                            const [hours, minutes, seconds] = dateValue.split(':');
+                            const timeDate = new Date();
+                            timeDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), parseInt(seconds || '0', 10), 0);
+                            return new Intl.DateTimeFormat('en-PH', options).format(timeDate);
+                        }
+                        
+                        const date = new Date(dateValue);
+                        // Check if the date is valid
+                        if (isNaN(date.getTime())) {
+                            // If it's not a valid date, return the original value if it looks like a formatted string
+                            if (typeof dateValue === 'string' && dateValue.length > 0) {
+                                return dateValue;
+                            }
+                            return 'Not specified';
+                        }
+                        return new Intl.DateTimeFormat('en-PH', options).format(date);
+                    } catch (e) {
+                        console.error('Error formatting date:', e, dateValue);
+                        return 'Not specified';
+                    }
+                };
+
+                // Log the raw order details for debugging
+                console.log('Raw order details:', JSON.stringify(orderDetails, null, 2));
+                
+                // Create template parameters that match EXACTLY with Brevo template variables
+                // Only include variables that are used in the template
+                const templateParams = {
+                    // Customer details
+                    name: orderDetails.customerName || orderDetails.name || 'Valued Customer',
+                    email: orderDetails.customerEmail || orderDetails.email || '',
+                    phone: orderDetails.customerPhone || orderDetails.phone || orderDetails.contact || 'Not specified',
+                    
+                    // Order details
+                    transaction_id: orderDetails.transaction_id || orderId || `LL-${new Date().toISOString().slice(2, 10).replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`,
+                    order_status: orderDetails.orderStatus || orderDetails.status || 'Confirmed & Assigned',
+                    
+                    // Denial information (for Template ID 2)
+                    denial_reason: orderDetails.denial_reason || '',
+                    additional_info: orderDetails.additional_info || '',
+                    
+                    // Dates and times - format as they appear in the template
+                    date: safeFormatDate(orderDetails.date || orderDetails.orderDate || orderDetails.created_at, { year: 'numeric', month: 'long', day: '2-digit' }),
+                    time: safeFormatDate(orderDetails.time || orderDetails.orderTime || orderDetails.created_at, { hour: '2-digit', minute: '2-digit', hour12: true }),
+                    
+                    // Delivery details - using direct field names from template
+                    address: orderDetails.deliveryAddress || orderDetails.shipping_address || orderDetails.address || 'Not specified',
+                    delivery_date: safeFormatDate(orderDetails.deliveryDate || orderDetails.estimated_delivery_date || orderDetails.date || orderDetails.created_at, { year: 'numeric', month: 'long', day: '2-digit' }),
+                    delivery_time: safeFormatDate(orderDetails.deliveryTime || orderDetails.estimated_delivery_time || orderDetails.time || orderDetails.created_at, { hour: '2-digit', minute: '2-digit', hour12: true }),
+                    
+                    // Payment and rider info
+                    payment_method: orderDetails.payment_method || orderDetails.paymentMethod || orderDetails.payment_type || 'Not specified',
+                    payment_status: orderDetails.payment_status || orderDetails.paymentStatus || (orderDetails.status === 'paid' ? 'Paid' : 'Pending'),
+                    rider_name: orderDetails.riderName || orderDetails.rider_name || 'Our delivery partner',
+                    
+                    // Order items - formatted as simple text
+                    order_items: orderItemsText,
+                    
+                    // Financials - format as currency with PHP symbol
+                    // Calculate remaining balance based on payment method
+                    total: (() => {
+                        const totalAmount = Number(orderDetails.total_price || orderDetails.total_amount || orderDetails.total || orderDetails.amount || 0);
+                        const paymentMethod = orderDetails.payment_method || orderDetails.paymentMethod || orderDetails.payment_type || '';
+                        const paidAmount = Number(orderDetails.paid_amount || orderDetails.paidAmount || 0);
+                        
+                        // If full payment, remaining balance is 0
+                        if (paymentMethod.toLowerCase() === 'fullpayment' || paymentMethod.toLowerCase() === 'full payment') {
+                            return '0.00';
+                        }
+                        
+                        // If down payment, calculate remaining balance
+                        if (paymentMethod.toLowerCase() === 'downpayment' || paymentMethod.toLowerCase() === 'down payment') {
+                            const remainingBalance = totalAmount - paidAmount;
+                            return remainingBalance > 0 ? remainingBalance.toFixed(2) : '0.00';
+                        }
+                        
+                        // Default: show total amount as remaining balance
+                        return totalAmount.toFixed(2);
+                    })(),
+                    
+                    subtotal: orderDetails.subtotal ? Number(orderDetails.subtotal).toFixed(2) : 
+                             (orderDetails.total_amount && orderDetails.delivery_fee) ? 
+                             Number(orderDetails.total_amount - orderDetails.delivery_fee).toFixed(2) : 
+                             (orderDetails.total_amount ? Number(orderDetails.total_amount).toFixed(2) : '0.00'),
+                    delivery_fee: orderDetails.delivery_fee || orderDetails.deliveryFee ? Number(orderDetails.delivery_fee || orderDetails.deliveryFee).toFixed(2) : '0.00',
+                    
+                    // Additional order details
+                    notes: orderDetails.notes || orderDetails.special_instructions || orderDetails.comments || 'None'
+                };
+
+                // Log the template parameters being sent to Brevo
+                console.log('Template parameters being sent to Brevo:', JSON.stringify(templateParams, null, 2));
+                console.log('Individual template params check:', {
+                    name: templateParams.name,
+                    transaction_id: templateParams.transaction_id,
+                    order_status: templateParams.order_status,
+                    date: templateParams.date,
+                    time: templateParams.time,
+                    delivery_date: templateParams.delivery_date,
+                    delivery_time: templateParams.delivery_time,
+                    address: templateParams.address,
+                    payment_method: templateParams.payment_method,
+                    rider_name: templateParams.rider_name,
+                    order_items: templateParams.order_items ? templateParams.order_items.substring(0, 50) + '...' : 'EMPTY',
+                    total: templateParams.total
+                });
+
+                // Prepare the email data
                 const emailData = {
                     sender: {
                         name: "Laura's Lechon",
@@ -4543,35 +4993,21 @@
                         email: email,
                         name: name
                     }],
-                    subject: templateId === 'confirmed' 
-                        ? `Order Confirmed - #${orderId}` 
-                        : templateId === 'shipped' 
-                            ? `Your Order is on the Way - #${orderId}`
-                            : `Order Update - #${orderId}`,
+                    subject: `Order Update - #${orderId}`,
                     templateId: parseInt(templateId),
-                    // Add fallback text content (required by Brevo API)
-                    htmlContent: '<p>Thank you for your order. Please enable HTML to view the full email content.</p>',
-                    textContent: 'Thank you for your order. Please view this email in an HTML-compatible email client to see the full content.',
-                    params: {
-                        name: name,
-                        transaction_id: orderId,
-                        order_items: orderItems,
-                        order_date: orderDetails.orderDate || new Date().toLocaleDateString('en-PH'),
-                        order_time: orderDetails.orderTime || new Date().toLocaleTimeString('en-PH', {hour: '2-digit', minute:'2-digit'}),
-                        address: orderDetails.deliveryAddress || 'Not specified',
-                        delivery_date: orderDetails.deliveryDate || 'Not specified',
-                        delivery_time: orderDetails.deliveryTime || 'Not specified',
-                        payment_method: orderDetails.paymentMethod || 'Not specified',
-                        order_status: orderDetails.orderStatus || 'Confirmed',
-                        rider_name: orderDetails.riderName || 'Our delivery partner',
-                        total: orderDetails.total ? `₱${Number(orderDetails.total).toFixed(2)}` : '₱0.00',
-                        order_summary: orderItems  // Using the correct variable name
-                    }
+                    params: templateParams
                 };
+                
+                console.log('Final emailData being sent to Brevo:', JSON.stringify({
+                    ...emailData,
+                    params: 'See above for params details'
+                }, null, 2));
+                
+                // Log the COMPLETE email data including params
+                console.log('COMPLETE EMAIL DATA WITH PARAMS:', JSON.stringify(emailData, null, 2));
                 
                 // Log the email details for debugging
                 console.log('Preparing to send email with details:', {
-                    to: email,
                     templateId: templateId,
                     orderId: orderId,
                     isLocalhost: (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
@@ -4584,6 +5020,8 @@
                 
                 // Send the email using Brevo API
                 console.log('Sending request to Brevo API...');
+                console.log('Request body:', JSON.stringify(emailData, null, 2));
+                
                 const response = await fetch(brevoUrl, {
                     method: 'POST',
                     headers: {
@@ -4596,23 +5034,29 @@
                 
                 console.log('Brevo API response status:', response.status);
                 
+                // Log the response body for debugging
+                const responseText = await response.text();
+                console.log('Brevo API response body:', responseText);
+                
+                // If response is not ok, parse and throw error
                 if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    const errorMessage = errorData.message || `HTTP error! status: ${response.status}`;
-                    
-                    // Handle specific Brevo errors
-                    if (response.status === 401) {
-                        console.error('Brevo API Error: Unauthorized. Please check your API key and IP whitelisting.');
-                        console.error('Visit https://app.brevo.com/security/authorised_ips to whitelist your IP address.');
-                    } else if (response.status === 400) {
-                        console.error('Brevo API Error: Bad Request', errorData);
-                    } else if (response.status === 403) {
-                        console.error('Brevo API Error: Forbidden. Check your account permissions.');
-                    } else if (response.status === 429) {
-                        console.error('Brevo API Error: Rate limit exceeded. Please try again later.');
+                    let errorData;
+                    try {
+                        errorData = JSON.parse(responseText);
+                    } catch (e) {
+                        errorData = { message: responseText };
                     }
-                    
+                    const errorMessage = errorData.message || `HTTP error! status: ${response.status}`;
                     throw new Error(errorMessage);
+                }
+                
+                // Parse success response
+                let responseData;
+                try {
+                    responseData = JSON.parse(responseText);
+                    console.log('Brevo API success response:', responseData);
+                } catch (e) {
+                    console.log('Could not parse response as JSON');
                 }
                 
                     console.log(`Email sent successfully to ${email}`);
