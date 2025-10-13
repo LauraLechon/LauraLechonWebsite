@@ -1958,13 +1958,12 @@
         // Check session on page load
         checkAdminSession();
 
-        // Brevo Email Configuration - loaded from supabase-config.js
-        const brevoConfig = window.brevoConfig || {};
-        const brevoApiKey = brevoConfig.apiKey || '';
-        const brevoUrl = brevoConfig.apiUrl || 'https://api.brevo.com/v3/smtp/email';
+        // Brevo Email Configuration - loaded from environment variables
+        const brevoApiKey = import.meta.env.VITE_BREVO_API_KEY || '';
+        const brevoUrl = 'https://api.brevo.com/v3/smtp/email';
         
         if (!brevoApiKey) {
-            console.error('Brevo API key is not set. Please check your configuration.');
+            console.error('Brevo API key is not set. Please check your .env file.');
         }
         
         // Initialize data structures
@@ -4777,16 +4776,10 @@
                     throw new Error(errorMsg);
                 }
                 
-                // Brevo API endpoint
-                // Get Brevo configuration from global config
-                const brevoConfig = window.brevoConfig || {};
-                const brevoUrl = brevoConfig.apiUrl || 'https://api.brevo.com/v3/smtp/email';
-                const brevoApiKey = brevoConfig.apiKey || '';
-                
                 console.log('Using Brevo API key:', brevoApiKey ? '*** (key exists)' : 'MISSING');
                 
                 if (!brevoApiKey) {
-                    const errorMsg = 'Brevo API key is not properly configured. Please check your configuration.';
+                    const errorMsg = 'Brevo API key is not properly configured. Please check your .env file and ensure VITE_BREVO_API_KEY is set.';
                     console.error(errorMsg);
                     throw new Error(errorMsg);
                 }
