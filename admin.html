@@ -9,15 +9,31 @@
     <!-- Load Supabase first, then our config, then the rest of the app -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js"></script>
+    <!-- Load configuration -->
+    <script src="config.js"></script>
+    <!-- Load local overrides if they exist -->
     <script>
-        // Wait for DOM to be fully loaded before initializing the app
+        // Function to check if file exists
+        function fileExists(url) {
+            const http = new XMLHttpRequest();
+            http.open('HEAD', url, false);
+            http.send();
+            return http.status !== 404;
+        }
+
+        // Load local config if it exists
+        if (fileExists('config.local.js')) {
+            document.write('<script src="config.local.js"><\/script>');
+        }
+
+        // Initialize the app after config is loaded
         document.addEventListener('DOMContentLoaded', function() {
-            // Check if supabase is properly initialized
-            if (window.supabase) {
-                // Initialize your app here or call your initialization function
-                if (typeof initializeApp === 'function') {
-                    initializeApp();
-                }
+            if (!window.env || !window.env.VITE_BREVO_API_KEY) {
+                console.warn('Brevo API key is not configured. Email functionality will be disabled.');
+            }
+            
+            if (window.supabase && typeof initializeApp === 'function') {
+                initializeApp();
             } else {
                 console.error('Supabase client not properly initialized');
             }
@@ -416,6 +432,7 @@
 
         /* Tables */
         .table-container {
+            position: relative;
             overflow-x: auto;
             border-radius: 10px;
             box-shadow: var(--shadow);
@@ -424,8 +441,8 @@
 
         table {
             width: 100%;
-            border-collapse: collapse;
-            table-layout: fixed;
+            border-collapse: separate;
+            border-spacing: 0;
             min-width: 1000px;
         }
 
@@ -434,6 +451,87 @@
             text-align: left;
             border-bottom: 1px solid var(--border);
             font-size: 0.85rem;
+            white-space: nowrap;
+            position: relative;
+        }
+
+        /* Confirmed Orders table column widths */
+        #confirmedOrderTable th:nth-child(1), #confirmedOrderTable td:nth-child(1) { 
+            width: 140px;  /* Transaction ID */
+            min-width: 140px;
+        } 
+        #confirmedOrderTable th:nth-child(2), #confirmedOrderTable td:nth-child(2) { 
+            width: 160px;  /* Name */
+            min-width: 160px;
+        } 
+        #confirmedOrderTable th:nth-child(3), #confirmedOrderTable td:nth-child(3) { 
+            width: 120px;  /* Contact */
+            min-width: 120px;
+        } 
+        #confirmedOrderTable th:nth-child(4), #confirmedOrderTable td:nth-child(4) { 
+            width: 180px;  /* Email */
+            min-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        } 
+        #confirmedOrderTable th:nth-child(5), #confirmedOrderTable td:nth-child(5) { 
+            width: 100px;  /* Date */
+            min-width: 100px;
+        } 
+        #confirmedOrderTable th:nth-child(6), #confirmedOrderTable td:nth-child(6) { 
+            width: 90px;  /* Time */
+            min-width: 90px;
+        } 
+        #confirmedOrderTable th:nth-child(7), #confirmedOrderTable td:nth-child(7) { 
+            width: 200px;  /* Address */
+            min-width: 200px;
+        } 
+        #confirmedOrderTable th:nth-child(8), #confirmedOrderTable td:nth-child(8) { 
+            width: 150px;  /* Landmarks */
+            min-width: 150px;
+        } 
+        #confirmedOrderTable th:nth-child(9), #confirmedOrderTable td:nth-child(9) { 
+            width: 250px;  /* Order */
+            min-width: 250px;
+            white-space: normal;
+            word-break: break-word;
+        } 
+        #confirmedOrderTable th:nth-child(10), #confirmedOrderTable td:nth-child(10) { 
+            width: 100px;  /* Total */
+            min-width: 100px;
+            text-align: right;
+            padding-right: 20px;
+        } 
+        #confirmedOrderTable th:nth-child(11), #confirmedOrderTable td:nth-child(11) { 
+            width: 100px;  /* Balance */
+            min-width: 100px;
+            text-align: right;
+            padding-right: 20px;
+        } 
+        #confirmedOrderTable th:nth-child(12), #confirmedOrderTable td:nth-child(12) { 
+            width: 200px;  /* Payment Proof */
+            min-width: 200px;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        } 
+        #confirmedOrderTable th:nth-child(13), #confirmedOrderTable td:nth-child(13) { 
+            width: 100px;  /* Payment Type */
+            min-width: 100px;
+        } 
+        #confirmedOrderTable th:nth-child(14), #confirmedOrderTable td:nth-child(14) { 
+            width: 120px;  /* Status */
+            min-width: 120px;
+        } 
+        #confirmedOrderTable th:nth-child(15), #confirmedOrderTable td:nth-child(15) { 
+            width: 180px;  /* Rider */
+            min-width: 180px;
+        } 
+        #confirmedOrderTable th:nth-child(16), #confirmedOrderTable td:nth-child(16) { 
+            width: 160px;  /* Actions */
+            min-width: 160px;
+            white-space: nowrap;
         }
 
         th {
@@ -448,78 +546,159 @@
             background-color: #f8fafc;
         }
 
-        /* Column widths */
-        th:nth-child(1), td:nth-child(1) { width: 120px; } /* Transaction ID */
-        th:nth-child(2), td:nth-child(2) { width: 120px; } /* Name */
-        th:nth-child(3), td:nth-child(3) { width: 100px; } /* Contact */
-        th:nth-child(4), td:nth-child(4) { 
-            width: 180px;  /* Email - increased width */
-            max-width: 180px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        th:nth-child(5), td:nth-child(5) { width: 90px; }  /* Date */
-        th:nth-child(6), td:nth-child(6) { 
-            width: 120px;  /* Status column */
-            min-width: 120px;
-            max-width: 120px;
-        }
-        th:nth-child(7), td:nth-child(7) { 
-            width: 120px;  /* Assigned Order column */
-            min-width: 120px;
-            max-width: 120px;
-        }
-        th:nth-child(8), td:nth-child(8) { width: 150px; } /* Address */
-        th:nth-child(9), td:nth-child(9) { width: 120px; } /* Landmarks */
-        th:nth-child(10), td:nth-child(10) { width: 150px; } /* Order */
-
-        /* Order List specific columns */
-        #orderTable th:nth-child(11), #orderTable td:nth-child(11) { width: 100px; }  /* Paid Amount */
-        #orderTable th:nth-child(12), #orderTable td:nth-child(12) { 
-            width: 120px;  /* Payment Proof */
-            min-width: 120px;
-            max-width: 120px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        #orderTable th:nth-child(13), #orderTable td:nth-child(13) { width: 90px; }  /* Payment Type */
-        #orderTable th:nth-child(14), #orderTable td:nth-child(14) { width: 150px; } /* Actions */
-
-        /* Confirmed Order specific columns */
-        #confirmedOrderTable th:nth-child(11), #confirmedOrderTable td:nth-child(11) { width: 100px; }  /* Balance */
-        #confirmedOrderTable th:nth-child(12), #confirmedOrderTable td:nth-child(12) { width: 100px; } /* Payment Proof */
-        #confirmedOrderTable th:nth-child(13), #confirmedOrderTable td:nth-child(13) { width: 110px; }  /* Status */
-        #confirmedOrderTable th:nth-child(14), #confirmedOrderTable td:nth-child(14) { width: 150px; } /* Rider */
-        #confirmedOrderTable th:nth-child(15), #confirmedOrderTable td:nth-child(15) { width: 150px; } /* Actions */
-
-        /* Order History specific columns */
-        #orderHistoryTable th:nth-child(11), #orderHistoryTable td:nth-child(11) { width: 100px; }  /* Initial Payment */
-        #orderHistoryTable th:nth-child(12), #orderHistoryTable td:nth-child(12) { width: 100px; } /* Final Payment */
-        #orderHistoryTable th:nth-child(13), #orderHistoryTable td:nth-child(13) { width: 100px; } /* Payment Proof */
-        #orderHistoryTable th:nth-child(14), #orderHistoryTable td:nth-child(14) { width: 150px; } /* Rider */
-        #orderHistoryTable th:nth-child(15), #orderHistoryTable td:nth-child(15) { width: 120px; }  /* Delete */
-        
-        /* Add this to your existing CSS */
+        /* Base table styles */
         table {
             table-layout: fixed;
             width: 100%;
+            border-collapse: collapse;
         }
 
         td, th {
             padding: 12px 15px;
             text-align: left;
             border-bottom: 1px solid var(--border);
-            font-size: 0.85rem;
+            vertical-align: top;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        /* Common column styles */
+        .text-ellipsis {
+            white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
+        .text-wrap {
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        .text-right {
+            text-align: right;
+            padding-right: 20px;
+        }
+
+        /* Order List specific columns */
+        #orderTable th:nth-child(1), #orderTable td:nth-child(1) { width: 140px; }  /* Transaction ID */
+        #orderTable th:nth-child(2), #orderTable td:nth-child(2) { width: 140px; }  /* Name */
+        #orderTable th:nth-child(3), #orderTable td:nth-child(3) { width: 120px; }  /* Contact */
+        #orderTable th:nth-child(4), #orderTable td:nth-child(4) { width: 160px; }  /* Email */
+        #orderTable th:nth-child(5), #orderTable td:nth-child(5) { width: 100px; }  /* Date */
+        #orderTable th:nth-child(6), #orderTable td:nth-child(6) { width: 90px; }   /* Time */
+        #orderTable th:nth-child(7), #orderTable td:nth-child(7) { width: 160px; }  /* Address */
+        #orderTable th:nth-child(8), #orderTable td:nth-child(8) { width: 140px; }  /* Landmarks */
+        #orderTable th:nth-child(9), #orderTable td:nth-child(9) { width: 180px; }  /* Order */
+        #orderTable th:nth-child(10), #orderTable td:nth-child(10) { width: 100px; } /* Total */
+        #orderTable th:nth-child(11), #orderTable td:nth-child(11) { width: 160px; } /* Payment Proof */
+        #orderTable th:nth-child(12), #orderTable td:nth-child(12) { width: 100px; } /* Payment Type */
+        #orderTable th:nth-child(13), #orderTable td:nth-child(13) { width: 120px; } /* Status */
+        #orderTable th:nth-child(14), #orderTable td:nth-child(14) { width: 140px; } /* Actions */
+
+        /* Order History specific columns */
+        #orderHistoryTable th:nth-child(1), #orderHistoryTable td:nth-child(1) { width: 140px; }  /* Transaction ID */
+        #orderHistoryTable th:nth-child(2), #orderHistoryTable td:nth-child(2) { width: 140px; }  /* Name */
+        #orderHistoryTable th:nth-child(3), #orderHistoryTable td:nth-child(3) { width: 120px; }  /* Contact */
+        #orderHistoryTable th:nth-child(4), #orderHistoryTable td:nth-child(4) { width: 160px; }  /* Email */
+        #orderHistoryTable th:nth-child(5), #orderHistoryTable td:nth-child(5) { width: 100px; }  /* Date */
+        #orderHistoryTable th:nth-child(6), #orderHistoryTable td:nth-child(6) { width: 90px; }   /* Time */
+        #orderHistoryTable th:nth-child(7), #orderHistoryTable td:nth-child(7) { width: 160px; }  /* Address */
+        #orderHistoryTable th:nth-child(8), #orderHistoryTable td:nth-child(8) { width: 140px; }  /* Landmarks */
+        #orderHistoryTable th:nth-child(9), #orderHistoryTable td:nth-child(9) { width: 180px; }  /* Order */
+        #orderHistoryTable th:nth-child(10), #orderHistoryTable td:nth-child(10) { width: 100px; } /* Initial Payment */
+        #orderHistoryTable th:nth-child(11), #orderHistoryTable td:nth-child(11) { width: 100px; } /* Final Payment */
+        #orderHistoryTable th:nth-child(12), #orderHistoryTable td:nth-child(12) { width: 160px; } /* Payment Proof */
+        #orderHistoryTable th:nth-child(13), #orderHistoryTable td:nth-child(13) { width: 120px; } /* Status */
+        #orderHistoryTable th:nth-child(14), #orderHistoryTable td:nth-child(14) { width: 140px; } /* Rider */
+        #orderHistoryTable th:nth-child(15), #orderHistoryTable td:nth-child(15) { 
+            width: 100px;  /* Delete */
+            min-width: 100px;
+            max-width: 100px;
+            padding: 8px 4px;
+        }
+
+        /* Order History tab specific styles */
+        #order-history .tab-stats {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        #order-history .action-btn {
+            padding: 6px 10px;
+            font-size: 0.8rem;
+            margin: 0;
+            white-space: nowrap;
+        }
+
+        #orderHistoryTable .action-buttons {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+
+        #orderHistoryTable .action-buttons .btn-delete {
+            padding: 4px 8px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            width: 80px;
+            text-align: center;
+            margin: 0 auto;
+            display: block;
+        }
+
+        #orderHistoryTable .action-buttons .btn-delete i {
+            margin-right: 4px;
+        }
+
+        /* Confirmed Orders specific columns */
+        #confirmedOrderTable th:nth-child(1), #confirmedOrderTable td:nth-child(1) { width: 140px; }  /* Transaction ID */
+        #confirmedOrderTable th:nth-child(2), #confirmedOrderTable td:nth-child(2) { width: 140px; }  /* Name */
+        #confirmedOrderTable th:nth-child(3), #confirmedOrderTable td:nth-child(3) { width: 120px; }  /* Contact */
+        #confirmedOrderTable th:nth-child(4), #confirmedOrderTable td:nth-child(4) { width: 160px; }  /* Email */
+        #confirmedOrderTable th:nth-child(5), #confirmedOrderTable td:nth-child(5) { width: 100px; }  /* Date */
+        #confirmedOrderTable th:nth-child(6), #confirmedOrderTable td:nth-child(6) { width: 90px; }   /* Time */
+        #confirmedOrderTable th:nth-child(7), #confirmedOrderTable td:nth-child(7) { width: 160px; }  /* Address */
+        #confirmedOrderTable th:nth-child(8), #confirmedOrderTable td:nth-child(8) { width: 140px; }  /* Landmarks */
+        #confirmedOrderTable th:nth-child(9), #confirmedOrderTable td:nth-child(9) { width: 180px; }  /* Order */
+        #confirmedOrderTable th:nth-child(10), #confirmedOrderTable td:nth-child(10) { width: 100px; } /* Total */
+        #confirmedOrderTable th:nth-child(11), #confirmedOrderTable td:nth-child(11) { width: 100px; } /* Balance */
+        #confirmedOrderTable th:nth-child(12), #confirmedOrderTable td:nth-child(12) { width: 160px; } /* Payment Proof */
+        #confirmedOrderTable th:nth-child(13), #confirmedOrderTable td:nth-child(13) { width: 100px; } /* Payment Type */
+        #confirmedOrderTable th:nth-child(14), #confirmedOrderTable td:nth-child(14) { width: 120px; } /* Status */
+        #confirmedOrderTable th:nth-child(15), #confirmedOrderTable td:nth-child(15) { width: 140px; } /* Rider */
+        #confirmedOrderTable th:nth-child(16), #confirmedOrderTable td:nth-child(16) { width: 140px; } /* Actions */
+
+        /* Apply text wrapping to all cells except where specified */
+        td, th {
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        /* Specific columns that should not wrap */
+        #orderTable th:nth-child(14), #orderTable td:nth-child(14),
+        #orderHistoryTable th:nth-child(15), #orderHistoryTable td:nth-child(15),
+        #confirmedOrderTable th:nth-child(16), #confirmedOrderTable td:nth-child(16) {
+            white-space: nowrap;
+        }
+
+        /* Right align numeric columns */
+        #orderTable td:nth-child(10),
+        #orderHistoryTable td:nth-child(10), #orderHistoryTable td:nth-child(11),
+        #confirmedOrderTable td:nth-child(10), #confirmedOrderTable td:nth-child(11) {
+            text-align: right;
+            padding-right: 20px;
+        }
+
         /* Add tooltip for truncated email */
-        td:nth-child(3):hover {
+        td:nth-child(4):hover {
+            position: relative;
+            z-index: 10;
             overflow: visible;
             white-space: normal;
+            background: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
             position: relative;
             z-index: 100;
             background-color: var(--card-bg);
@@ -1182,6 +1361,16 @@
             background-color: #28a745;
         }
 
+        .status-cancelled {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status-cancelled::before {
+            background-color: #dc3545;
+        }
+
         /* Payment type badge styles */
         .payment-type {
             min-width: 60px;
@@ -1333,29 +1522,13 @@
             min-width: 120px;  /* Ensure minimum width for actions column */
         }
         
-        /* Ensure actions column is wide enough and always visible */
-        #confirmedOrderTable th:last-child,
-        #confirmedOrderTable td:last-child {
+        /* Actions column - simple width only, no sticky positioning */
+        #confirmedOrderTable th:nth-child(16),
+        #confirmedOrderTable td:nth-child(16) {
+            width: 160px;
             min-width: 160px;
             max-width: 160px;
-            width: 160px;
             white-space: nowrap;
-            position: sticky;
-            right: 0;
-            background-color: var(--card-bg);
-            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
-            z-index: 10;
-        }
-        
-        /* Make sure the header stays on top when scrolling */
-        #confirmedOrderTable th:last-child {
-            z-index: 20;
-            background-color: var(--primary);
-        }
-        
-        /* Add some padding to the action buttons */
-        .action-buttons {
-            padding: 5px 0;
         }
         
         /* Make action buttons full width of their container */
@@ -1660,17 +1833,21 @@
 
         <!-- Order History Tab -->
         <div id="order-history" class="tab-content">
-            <div class="tab-header">
+            <div class="tab-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                 <h2 class="tab-heading"><i class="fas fa-history"></i> Order History</h2>
-                <div class="tab-stats">
-                    <span class="tab-stat" id="orderHistoryTotalOrders">Orders: 0</span>
-                    <span class="tab-stat" id="orderHistoryTotalLechonBellies">Lechon Bellies: 0</span>
-                    <button class="action-btn btn-deny" onclick="clearAllHistory()" style="margin-left: 10px;">
-                        <i class="fas fa-trash"></i> Clear All History
-                    </button>
-                    <button class="action-btn btn-confirm" onclick="downloadOrderHistory()" style="margin-left: 10px;">
-                        <i class="fas fa-download"></i> Download History
-                    </button>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="tab-stats" style="margin-right: 10px;">
+                        <span class="tab-stat" id="orderHistoryTotalOrders">Orders: 0</span>
+                        <span class="tab-stat" id="orderHistoryTotalLechonBellies">Lechon Bellies: 0</span>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="logout-btn" onclick="clearAllHistory()" style="background-color: #dc3545;">
+                            <i class="fas fa-trash"></i> Clear All
+                        </button>
+                        <button class="logout-btn" onclick="downloadOrderHistory()" style="background-color: #28a745;">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                    </div>
                 </div>
             </div>
             <div class="search-container">
@@ -1724,7 +1901,6 @@
                             <th>Vehicle Type</th>
                             <th>Plate Number</th>
                             <th>Status</th>
-                            <th>Assigned Order</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -1958,14 +2134,15 @@
         // Check session on page load
         checkAdminSession();
 
-        // Brevo Email Configuration - loaded from environment variables
-        const brevoApiKey = import.meta.env.VITE_BREVO_API_KEY || '';
-        const brevoUrl = 'https://api.brevo.com/v3/smtp/email';
-        
-        if (!brevoApiKey) {
-            console.error('Brevo API key is not set. Please check your .env file.');
+        // Brevo Email Configuration - Ensure these are only declared once
+        if (typeof BREVO_API_KEY === 'undefined') {
+            window.BREVO_API_KEY = window.env?.VITE_BREVO_API_KEY || '';
+            window.BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
+            window.BREVO_SENDER_EMAIL = 'lyrojpulmones@gmail.com';
+            window.BREVO_SENDER_NAME = 'Laura\'s Lechon';
+            window.BREVO_REPLY_TO = 'lyrojpulmones@gmail.com';
         }
-        
+
         // Initialize data structures
         let ordersByYear = {};
         let confirmedOrdersByYear = {};
@@ -2022,27 +2199,67 @@
         });
         }
 
-        // Update monthly sales chart
+        // Chart update optimization
+        let lastChartData = null;
+        let isUpdating = false;
+        let updateRequested = false;
+
+        // Optimized chart update function
         function updateMonthlySalesChart(monthlySales) {
-            if (!salesChart) return;
+            if (!salesChart || isUpdating) {
+                updateRequested = true;
+                return;
+            }
+
+            // Check if data actually changed
+            if (lastChartData && JSON.stringify(lastChartData) === JSON.stringify(monthlySales)) {
+                return;
+            }
+
+            lastChartData = [...monthlySales];
+            isUpdating = true;
             
-            // Update existing chart data
-            salesChart.data.datasets[0].data = monthlySales;
-            
-            // Update the chart
-            salesChart.update('none'); // 'none' prevents animation which can cause flicker
-            
-            // Force a reflow to ensure the chart updates properly
-            setTimeout(() => {
-                salesChart.resize();
-            }, 0);
+            // Use requestAnimationFrame for smooth animation
+            requestAnimationFrame(() => {
+                try {
+                    // Disable animations for this update
+                    const originalAnimation = salesChart.options.animation;
+                    salesChart.options.animation = false;
+                    
+                    // Update the data
+                    salesChart.data.datasets[0].data = monthlySales;
+                    
+                    // Update without animation
+                    salesChart.update('none');
+                    
+                    // Restore animation settings
+                    salesChart.options.animation = originalAnimation;
+                    
+                    // Process any pending updates
+                    if (updateRequested) {
+                        updateRequested = false;
+                        setTimeout(() => updateMonthlySalesChart(monthlySales), 0);
+                    }
+                } catch (error) {
+                    console.error('Error updating chart:', error);
+                } finally {
+                    isUpdating = false;
+                }
+            });
         }
 
         // Initialize application
         async function initializeApp() {
+            // First, ensure the DOM is fully loaded
+            if (document.readyState === 'loading') {
+                await new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve));
+            }
+            
+            // Initialize data and UI components
             await loadData();
             setupEventListeners();
             updateRealTimeDate();
+            ensureAccessibleFormLabels(document);
             
             // Set up real-time updates
             setInterval(updateRealTimeDate, 1000);
@@ -2050,12 +2267,22 @@
             setInterval(checkForStatusUpdates, 1000);
             setInterval(checkForRiderUpdates, 1000);
             
-            // Set initial values
+            // Set initial tab and load data
             openTab('dashboard');
-            await updateMonthlyTotal();
-            await updateOrderNotificationBadge();
-            // Ensure accessibility labels across the app
-            ensureAccessibleFormLabels(document);
+            
+            // Initial render of all data
+            await Promise.all([
+                updateMonthlyTotal(),
+                renderOrderList(),
+                renderConfirmedOrders(),
+                renderRiders(),
+                updateOrderNotificationBadge()
+            ]);
+            
+            // Check for new orders and updates
+            checkForNewOrders();
+            checkForStatusUpdates();
+            checkForRiderUpdates();
         }
 
         // Load data from Supabase
@@ -2398,7 +2625,7 @@
                 let query = supabase
                     .from('orders')
                     .select('*')
-                    .in('status', ['Preparing', 'Delivery', 'Delivered'])
+                    .in('status', ['Preparing', 'Delivery', 'Delivered', 'Cancelled'])
                     .order('updated_at', { ascending: false });
             
                 if (searchTerm) {
@@ -2456,6 +2683,10 @@
                             statusClass = 'status-delivered';
                             statusText = 'Delivered';
                             break;
+                        case 'Cancelled':
+                            statusClass = 'status-cancelled';
+                            statusText = 'Cancelled';
+                            break;
                         default:
                             statusClass = 'status-pending';
                             statusText = 'Pending';
@@ -2475,7 +2706,7 @@
                 
                     const row = document.createElement('tr');
                     
-                    // Create cells in the exact order of the table headers
+                    // Create cells array with all columns including actions
                     const cells = [
                         // Transaction ID
                         `<td>${highlightText(order.transaction_id, searchTerm)}</td>`,
@@ -2508,11 +2739,15 @@
                         // Rider
                         `<td>${highlightText(assignedRiderInfo, searchTerm)}</td>`,
                         // Actions (last column)
-                        `<td class="actions-cell">
+                        `<td>
                             <div class="action-buttons">
                                 <button class="action-btn btn-move-history ${order.status !== 'Delivered' ? 'disabled' : ''}" 
                                         onclick="if('${order.status}' === 'Delivered') markAsDelivered('${order.id}')">
                                     <i class="fas fa-archive"></i> Move to History
+                                </button>
+                                <button class="action-btn btn-cancel" 
+                                        onclick="cancelOrder('${order.id}')">
+                                    <i class="fas fa-times"></i> Cancel Order
                                 </button>
                             </div>
                         </td>`
@@ -2559,23 +2794,65 @@
                 const { data: orders, error } = await query;
                 if (error) throw error;
 
-                // Get all unique rider IDs from orders
-                const riderIds = [...new Set(orders.map(order => order.assigned_rider_id).filter(Boolean))];
-                let ridersMap = new Map();
-
-                // If there are riders, fetch their details
-                if (riderIds.length > 0) {
-                    const { data: riders, error: ridersError } = await supabase
-                        .from('riders')
-                        .select('*')
-                        .in('id', riderIds);
-                    
-                    if (ridersError) throw ridersError;
-                    
-                    // Create a map of rider ID to rider details
-                    riders.forEach(rider => {
-                        ridersMap.set(rider.id, rider);
+                // Get all order IDs for fetching rider assignments
+                const orderIds = orders.map(order => order.id || order.order_id).filter(Boolean);
+                
+                // Create a map to store rider information for each order
+                const orderToRiderMap = new Map();
+                
+                // Try to get rider info from order_history first
+                const { data: historyRiders, error: historyError } = await supabase
+                    .from('order_history')
+                    .select('id, order_id, rider_id, rider_name, assigned_rider_id')
+                    .in('order_id', orderIds);
+                
+                if (historyError) console.error('Error fetching history riders:', historyError);
+                
+                // Process history riders
+                if (historyRiders && historyRiders.length > 0) {
+                    historyRiders.forEach(hr => {
+                        const orderId = hr.order_id;
+                        // Use rider_name if available, otherwise use rider_id or assigned_rider_id
+                        const riderName = hr.rider_name || 
+                                       (hr.rider_id ? `Rider ${hr.rider_id}` : 
+                                       (hr.assigned_rider_id ? `Rider ${hr.assigned_rider_id}` : null));
+                        
+                        if (riderName) {
+                            orderToRiderMap.set(orderId, {
+                                id: hr.rider_id || hr.assigned_rider_id,
+                                name: riderName
+                            });
+                        }
                     });
+                }
+                
+                // If we still have orders without rider info, try to get from orders table
+                const ordersWithoutRiders = orders.filter(order => !orderToRiderMap.has(order.id || order.order_id));
+                if (ordersWithoutRiders.length > 0) {
+                    // Instead of using IN with a large list, fetch all riders first
+                    const { data: allRiders, error: ridersError } = await supabase
+                        .from('riders')
+                        .select('id, name');
+                    
+                    if (ridersError) {
+                        console.error('Error fetching riders:', ridersError);
+                    } else if (allRiders) {
+                        // Create a map of rider IDs to names
+                        const ridersMap = new Map(allRiders.map(rider => [rider.id, rider.name]));
+                        
+                        // Process each order that's missing rider info
+                        ordersWithoutRiders.forEach(order => {
+                            const orderId = order.id || order.order_id;
+                            const riderId = order.assigned_rider_id || order.rider_id;
+                            
+                            if (riderId) {
+                                orderToRiderMap.set(orderId, {
+                                    id: riderId,
+                                    name: ridersMap.get(riderId) || `Rider ${riderId}`
+                                });
+                            }
+                        });
+                    }
                 }
             
                 const orderHistoryTable = document.querySelector('#orderHistoryTable tbody');
@@ -2586,21 +2863,40 @@
                 orderHistoryTable.innerHTML = '';
 
                 orders.forEach(order => {
-                    // Check if order is denied
+                    // Check order status for styling
                     const isDenied = order.status === 'Denied';
-                    const timestamp = order.created_at ? `<span class="timestamp">${isDenied ? 'Denied' : 'Delivered'}: ${formatTimestamp(order.created_at)}</span>` : '';
+                    const isCancelled = order.status === 'Cancelled';
+                    let statusText = 'Delivered';
+                    let statusClass = '';
+                    
+                    if (isDenied) {
+                        statusText = 'Denied';
+                        statusClass = 'denied';
+                    } else if (isCancelled) {
+                        statusText = 'Cancelled';
+                        statusClass = 'cancelled';
+                    }
+                    
+                    const timestamp = order.created_at ? `<span class="timestamp">${statusText}: ${formatTimestamp(order.created_at)}</span>` : '';
                     
                     // Get rider info from our map
+                    const orderId = order.id || order.order_id;
                     let riderName = 'Not assigned';
-                    if (order.assigned_rider_id && ridersMap.has(order.assigned_rider_id)) {
-                        const rider = ridersMap.get(order.assigned_rider_id);
-                        riderName = rider.name || 'N/A';
-                    } else if (isDenied) {
+                    
+                    if (orderToRiderMap.has(orderId)) {
+                        const rider = orderToRiderMap.get(orderId);
+                        riderName = rider.name || `Rider ${rider.id}`;
+                    } else if (isDenied || isCancelled) {
                         riderName = 'N/A';
                     }
                     
-                    // Apply red color style for denied orders
-                    const rowStyle = isDenied ? 'style="color: #dc3545; font-weight: 500;"' : '';
+                    // Apply styling based on order status
+                    let rowStyle = '';
+                    if (isDenied) {
+                        rowStyle = 'style="color: #dc3545; font-weight: 500;"';
+                    } else if (isCancelled) {
+                        rowStyle = 'style="color: #fd7e14; font-weight: 500;"'; // Orange color for cancelled orders
+                    }
                 
                     const row = document.createElement('tr');
                     row.innerHTML = `
@@ -2617,7 +2913,7 @@
                         <td ${rowStyle}>₱${(order.paid_amount || 0).toLocaleString()}</td>
                         <td ${rowStyle}>₱${(order.balance || 0).toLocaleString()}</td>
                         <td ${rowStyle}><span class="payment-reference">${order.payment_proof}</span></td>
-                        <td ${rowStyle}>${highlightText(riderName, searchTerm)}</td>
+                        <td ${rowStyle} class="rider-cell">${highlightText(riderName, searchTerm)}</td>
                         <td>
                             <div class="action-buttons">
                                 <button class="action-btn btn-delete" onclick="deleteOrderFromHistory('${order.order_id}')">
@@ -3764,55 +4060,12 @@
         let currentCancellingOrderId = null;
         let currentOrder = null;
 
-        // Show cancel order modal
-        async function showCancelOrderModal(orderId) {
-            try {
-                // Fetch the order details first
-                const { data: order, error } = await supabase
-                    .from('orders')
-                    .select('*')
-                    .eq('id', orderId)
-                    .single();
-                
-                if (error) throw error;
-                if (!order) {
-                    showNotification('Order not found', 'error');
-                    return;
-                }
-                
-                currentOrder = order;
-                currentCancellingOrderId = orderId;
-                document.getElementById('cancelOrderModal').style.display = 'block';
-                document.getElementById('cancellationReason').value = '';
-                document.getElementById('cancellationReason').focus();
-            } catch (error) {
-                console.error('Error fetching order details:', error);
-                showNotification('Error loading order details', 'error');
-            }
-        }
-
-        // Close cancel order modal
-        function closeCancelOrderModal() {
-            document.getElementById('cancelOrderModal').style.display = 'none';
-            currentCancellingOrderId = null;
-        }
-
-        // Handle confirm cancellation button click
-        document.getElementById('confirmCancelBtn').addEventListener('click', async function() {
-            const reason = document.getElementById('cancellationReason').value.trim();
-            if (!reason) {
-                showNotification('Please provide a reason for cancellation', 'error');
+        // Cancel order with confirmation
+        async function cancelOrder(orderId) {
+            if (!confirm('Are you sure you want to cancel this order?')) {
                 return;
             }
-            
-            if (currentCancellingOrderId) {
-                await cancelOrder(currentCancellingOrderId, reason);
-                closeCancelOrderModal();
-            }
-        });
 
-        // Update the cancelOrder function to work with Supabase and Brevo
-        async function cancelOrder(orderId, reason) {
             try {
                 // Get the order first to check if it has an assigned rider
                 const { data: order, error: fetchError } = await supabase
@@ -3821,117 +4074,154 @@
                     .eq('id', orderId)
                     .single();
         
-                if (fetchError) {
-                    console.error('Error fetching order:', fetchError);
-                    throw fetchError;
-                }
+                if (fetchError) throw fetchError;
                 if (!order) {
-                    console.error('Order not found for ID:', orderId);
                     showNotification('Order not found', 'error');
                     return;
                 }
 
-                console.log('Starting order cancellation process...');
-                console.log('Order ID:', orderId);
-                console.log('Found order to cancel:', order);
-                
                 // If there's an assigned rider, update their status first
                 if (order.assigned_rider_id) {
-                        console.log('Updating rider status...');
-                        console.log('Rider ID:', order.assigned_rider_id);
-                        
-                        // First verify the rider exists
-                        const { data: rider, error: riderCheckError } = await supabase
-                            .from('riders')
-                            .select('*')
-                            .eq('id', order.assigned_rider_id)
-                            .single();
+                    // Update the rider's status to available
+                    const { error: riderError } = await supabase
+                        .from('riders')
+                        .update({ status: 'Available' })
+                        .eq('id', order.assigned_rider_id);
 
-                        if (riderCheckError) {
-                            console.error('Error checking rider:', riderCheckError);
-                            throw riderCheckError;
-                        }
-
-                        if (!rider) {
-                            console.error('Rider not found for ID:', order.assigned_rider_id);
-                            showNotification('Assigned rider not found', 'error');
-                            return;
-                        }
-
-                        // Update the rider's status
-                        const { error: riderError } = await supabase
-                            .from('riders')
-                            .update({ 
-                                status: 'Available'
-                            })
-                            .eq('id', order.assigned_rider_id);
-
-                        if (riderError) {
-                            console.error('Error updating rider:', riderError);
-                            throw riderError;
-                        }
-                        console.log('Rider status updated successfully');
-                    }
-
-                    // Prepare order details for email
-                    const orderDetails = `Order ID: ${order.transaction_id}\n` +
-                                       `Date: ${new Date(order.date).toLocaleDateString()}\n` +
-                                       `Items: ${JSON.stringify(order.order_items, null, 2)}\n` +
-                                       `Reason: ${reason}`;
-
-                    // Send cancellation email using Brevo template ID 3 for order cancellations
-                    try {
-                        await sendOrderEmail(
-                            order.email,
-                            order.name,
-                            order.transaction_id,
-                            3, // Brevo template ID for order cancellation
-                            {
-                                orderId: order.transaction_id,
-                                customerName: order.name,
-                                orderDate: new Date(order.date).toLocaleDateString(),
-                                cancellationReason: reason,
-                                orderItems: JSON.stringify(order.order_items, null, 2)
-                            }
-                        );
-                    } catch (emailError) {
-                        console.error('Failed to send cancellation email:', emailError);
-                        showNotification('Order cancelled but failed to send email notification', 'warning');
-                    }
-                    
-                    // Delete the order
-                    console.log('Deleting order...');
-                    const { error: deleteError } = await supabase
-                        .from('orders')
-                        .delete()
-                        .eq('id', orderId);
-
-                    if (deleteError) throw deleteError;
-
-                    showNotification('Order has been cancelled', 'success');
-                    
-                    // Refresh all relevant views
-                    await renderConfirmedOrders();
-                    await renderRiders();
-                    await calculateDashboardData();
-                    
-                    // Update totals
-                    const { data: updatedOrders, error: fetchUpdatedError } = await supabase
-                        .from('orders')
-                        .select('*')
-                        .in('status', ['Preparing', 'Delivery']);
-
-                    if (fetchUpdatedError) {
-                        console.error('Error fetching updated orders:', fetchUpdatedError);
-                        throw fetchUpdatedError;
-                    }
-
-                    await calculateTotals(updatedOrders, 'confirmedOrderTotalOrders', 'confirmedOrderTotalLechonBellies');
-                } catch (error) {
-                    console.error('Detailed error in cancelOrder:', error);
-                    showNotification('Error cancelling order: ' + (error.message || 'Unknown error'), 'error');
+                    if (riderError) throw riderError;
                 }
+
+                // First, update the order status to Cancelled
+                const { error: updateError } = await supabase
+                    .from('orders')
+                    .update({ 
+                        status: 'Cancelled',
+                        assigned_rider_id: null,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', orderId);
+
+                if (updateError) throw updateError;
+
+                // Format order items for email
+                const orderItemsText = Array.isArray(order.order_items) 
+                    ? order.order_items.map(item => {
+                        const itemName = item.product_name || item.name || 'Item';
+                        const size = item.size ? ` (${item.size})` : '';
+                        const quantity = item.quantity || 1;
+                        const price = item.price || 0;
+                        const total = item.total || (price * quantity);
+                        
+                        return `${itemName}${size} x${quantity} - ₱${total.toFixed(2)}`;
+                    }).join('\n')
+                    : String(order.order_items || 'No items in order');
+
+                // Send cancellation email using Brevo template ID 6
+                try {
+                    await sendOrderEmail(
+                        order.email,
+                        order.name,
+                        order.transaction_id,
+                        6, // Brevo template ID for order cancellation
+                        {
+                            orderId: order.transaction_id,
+                            customerName: order.name,
+                            orderDate: new Date(order.date).toLocaleDateString(),
+                            order_items: orderItemsText,
+                            items: order.order_items, // Pass the raw items array for the email template
+                            total: order.total_price || 0,
+                            date: order.date,
+                            time: order.time,
+                            address: order.address,
+                            payment_method: order.payment_method || 'Not specified'
+                        }
+                    );
+                } catch (emailError) {
+                    console.error('Failed to send cancellation email:', emailError);
+                    showNotification('Order cancelled but failed to send email notification', 'warning');
+                }
+
+                // Generate a UUID for the order history
+                const uuid = crypto.randomUUID();
+                
+                // Prepare the order history record with only the essential fields
+                const historyRecord = {
+                    order_id: uuid,
+                    transaction_id: order.transaction_id,
+                    name: order.name,
+                    contact: order.contact,
+                    email: order.email,
+                    date: order.date,
+                    time: order.time,
+                    address: order.address,
+                    landmarks: order.landmarks || '',
+                    order_items: order.order_items,
+                    payment_proof: order.payment_proof || '',
+                    paid_amount: order.paid_amount || 0,  // Include paid_amount with default 0
+                    balance: order.balance || 0,          // Include balance with default 0
+                    status: 'Cancelled',
+                    created_at: order.created_at || new Date().toISOString(),
+                    rider_id: null // No rider assigned for cancelled orders
+                };
+
+                console.log('Attempting to insert into order_history:', historyRecord);
+                
+                // Insert the order into order_history with explicit column selection
+                const { data: insertedData, error: historyError } = await supabase
+                    .from('order_history')
+                    .insert([historyRecord], {
+                        returning: 'representation', // Get the inserted data back
+                        onConflict: 'transaction_id',
+                        ignoreDuplicates: false
+                    });
+
+                if (historyError) {
+                    console.error('Error moving order to history:', historyError);
+                    throw new Error(`Failed to move order to history: ${historyError.message}`);
+                }
+
+                console.log('Successfully inserted into order_history:', insertedData);
+
+                // Only delete from orders if history insert was successful
+                console.log('Attempting to delete order from orders table:', orderId);
+                const { error: deleteError } = await supabase
+                    .from('orders')
+                    .delete()
+                    .eq('id', orderId);
+
+                if (deleteError) {
+                    console.error('Error deleting order:', deleteError);
+                    throw new Error(`Failed to delete order: ${deleteError.message}`);
+                }
+
+                console.log('Successfully deleted order from orders table');
+                showNotification('Order has been cancelled', 'success');
+                
+                // Refresh the views
+                try {
+                    await Promise.all([
+                        renderConfirmedOrders(),
+                        renderOrderHistory(),
+                        renderRiders(),
+                        calculateDashboardData()
+                    ]);
+                    console.log('UI refreshed successfully');
+                } catch (refreshError) {
+                    console.error('Error refreshing UI:', refreshError);
+                    // Don't fail the whole operation if just the refresh fails
+                }
+
+            } catch (error) {
+                console.error('Error in cancelOrder:', {
+                    error: error.toString(),
+                    stack: error.stack,
+                    orderId: orderId,
+                    order: order
+                });
+                showNotification('Error cancelling order: ' + (error.message || 'Unknown error'), 'error');
+                throw error; // Re-throw to allow further debugging
             }
+        }
 
         // Mark order as delivered
         async function markAsDelivered(orderId) {
@@ -4184,79 +4474,82 @@
         /* Riders Management Functions */
         async function renderRiders() {
             try {
-                // Fetch riders from Supabase
-                const { data: riders, error } = await supabase
-                    .from('riders')
-                    .select('*')
-                    .order('name', { ascending: true });
+                console.log('Rendering riders...');
+                
+                // Use the riders data that was already loaded in loadData()
+                const riders = window.riders || [];
+                console.log(`Found ${riders.length} riders in memory`);
 
-                if (error) throw error;
-
-            const ridersTable = document.getElementById('ridersTable');
-                if (!ridersTable) return; // Exit if table doesn't exist (not on riders tab)
-
-            ridersTable.innerHTML = '';
-
-            // Calculate rider stats
-            const totalRiders = riders.length;
-            const availableRiders = riders.filter(r => r.status === 'Available').length;
-            const onDeliveryRiders = riders.filter(r => r.status === 'On Delivery').length;
-            const pendingRiders = riders.filter(r => r.status === 'Pending').length;
-
-            // Update stats
-                const totalRidersElement = document.getElementById('totalRiders');
-                const availableRidersElement = document.getElementById('availableRiders');
-                const onDeliveryRidersElement = document.getElementById('onDeliveryRiders');
-
-                if (totalRidersElement) totalRidersElement.textContent = `Total Riders: ${totalRiders}`;
-                if (availableRidersElement) availableRidersElement.textContent = `Available: ${availableRiders}`;
-            document.getElementById('totalRiders').textContent = `Total Riders: ${totalRiders}`;
-            document.getElementById('availableRiders').textContent = `Available: ${availableRiders}`;
-            document.getElementById('onDeliveryRiders').textContent = `On Delivery: ${onDeliveryRiders}`;
-
-                // Render each rider
-            riders.forEach(rider => {
-                let statusClass = '';
-                switch(rider.status) {
-                    case 'Available':
-                        statusClass = 'rider-available';
-                        break;
-                    case 'On Delivery':
-                        statusClass = 'rider-delivery';
-                        break;
-                    case 'Pending':
-                        statusClass = 'rider-unavailable';
-                        break;
-                    default:
-                        statusClass = 'rider-unavailable';
+                // Ensure the riders table exists
+                const ridersTable = document.getElementById('ridersTable');
+                if (!ridersTable) {
+                    console.warn('Riders table not found in the DOM');
+                    return;
                 }
 
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${rider.name}</td>
-                    <td>${rider.contact}</td>
-                    <td>${rider.email}</td>
-                    <td>${rider.vehicle_type}</td>
-                    <td>${rider.plate_number || 'N/A'}</td>
-                    <td><span class="rider-status ${statusClass}">${rider.status}</span></td>
-                    <td>${rider.assigned_order_id ? `Order #${rider.assigned_order_id}` : 'None'}</td>
-                    <td>
-                        ${rider.status === 'Pending' ? `
-                            <button class="action-btn btn-confirm" onclick="showRiderVerificationModal(${JSON.stringify(rider)})">
-                                <i class="fas fa-check"></i> Verify
-                            </button>
-                        ` : `
-                            <button class="action-btn btn-delete" onclick="deleteRider('${rider.id}')">
-                                <i class="fas fa-trash"></i> Delete
-                            </button>
-                        `}
-                    </td>
-                `;
-                ridersTable.appendChild(row);
-            });
+                // Clear existing rows
+                ridersTable.innerHTML = '';
+
+                if (riders.length === 0) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = '<td colspan="7" class="no-riders">No riders found in the system</td>';
+                    ridersTable.appendChild(row);
+                    return;
+                }
+
+                // Calculate rider stats
+                const totalRiders = riders.length;
+                const availableRiders = riders.filter(r => r.status === 'Available').length;
+                const onDeliveryRiders = riders.filter(r => r.status === 'On Delivery').length;
+                const pendingRiders = riders.filter(r => r.status === 'Pending').length;
+
+                // Update stats display
+                const updateStat = (id, value) => {
+                    const element = document.getElementById(id);
+                    if (element) element.textContent = value;
+                };
+
+                updateStat('totalRiders', `Total Riders: ${totalRiders}`);
+                updateStat('availableRiders', `Available: ${availableRiders}`);
+                updateStat('onDeliveryRiders', `On Delivery: ${onDeliveryRiders}`);
+
+                // Render each rider
+                riders.forEach(rider => {
+                    if (!rider) return;
+
+                    const statusClass = {
+                        'Available': 'rider-available',
+                        'On Delivery': 'rider-delivery',
+                        'Pending': 'rider-unavailable'
+                    }[rider.status] || 'rider-unavailable';
+
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${rider.name || 'N/A'}</td>
+                        <td>${rider.contact || 'N/A'}</td>
+                        <td>${rider.email || 'N/A'}</td>
+                        <td>${rider.vehicle_type || 'N/A'}</td>
+                        <td>${rider.plate_number || 'N/A'}</td>
+                        <td><span class="rider-status ${statusClass}">${rider.status || 'N/A'}</span></td>
+                        <td>
+                            ${rider.status === 'Pending' ? `
+                                <button class="action-btn btn-confirm" onclick="showRiderVerificationModal(${JSON.stringify(rider).replace(/"/g, '&quot;')}); return false;">
+                                    <i class="fas fa-check"></i> Verify
+                                </button>
+                            ` : `
+                                <button class="action-btn btn-delete" onclick="deleteRider('${rider.id}'); return false;">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            `}
+                        </td>
+                    `;
+                    ridersTable.appendChild(row);
+                });
+
+                console.log('Riders rendered successfully');
             } catch (error) {
                 console.error('Error rendering riders:', error);
-                showNotification('Error loading riders', 'error');
+                showNotification('Error loading riders: ' + (error.message || 'Unknown error'), 'error');
             }
         }
 
@@ -4399,7 +4692,7 @@
                 if (e.target && e.target.classList.contains('cancel-order-btn')) {
                     const orderId = e.target.getAttribute('data-order-id');
                     if (orderId) {
-                        showCancelOrderModal(orderId);
+                        cancelOrder(orderId);
                     }
                 }
             });
@@ -4776,10 +5069,16 @@
                     throw new Error(errorMsg);
                 }
                 
+                // Brevo API endpoint
+                // Get Brevo configuration from global config
+                const brevoConfig = window.brevoConfig || {};
+                const brevoUrl = brevoConfig.apiUrl || 'https://api.brevo.com/v3/smtp/email';
+                const brevoApiKey = brevoConfig.apiKey || '';
+                
                 console.log('Using Brevo API key:', brevoApiKey ? '*** (key exists)' : 'MISSING');
                 
                 if (!brevoApiKey) {
-                    const errorMsg = 'Brevo API key is not properly configured. Please check your .env file and ensure VITE_BREVO_API_KEY is set.';
+                    const errorMsg = 'Brevo API key is not properly configured. Please check your configuration.';
                     console.error(errorMsg);
                     throw new Error(errorMsg);
                 }
