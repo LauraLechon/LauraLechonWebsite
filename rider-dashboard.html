@@ -145,9 +145,6 @@
                 if (typeof window.loadAssignedOrders === 'function') {
                     await window.loadAssignedOrders();
                 }
-                if (typeof window.loadDeliveryHistory === 'function') {
-                    await window.loadDeliveryHistory();
-                }
 
             } catch (err) {
                 console.error('Dashboard init error:', err);
@@ -162,6 +159,28 @@
         });
     </script>
     <script src="https://smtpjs.com/v3/smtp.js"></script>
+    <!-- Load configuration -->
+    <script src="config.js"></script>
+    <!-- Load local overrides if they exist -->
+    <script>
+        // Function to check if file exists
+        function fileExists(url) {
+            const http = new XMLHttpRequest();
+            http.open('HEAD', url, false);
+            http.send();
+            return http.status !== 404;
+        }
+
+        // Load local config if it exists
+        if (fileExists('config.local.js')) {
+            document.write('<script src="config.local.js"><\/script>');
+        }
+
+        // Check if Brevo API key is configured
+        if (!window.env || !window.env.VITE_BREVO_API_KEY) {
+            console.warn('Brevo API key is not configured. Email functionality will be disabled.');
+        }
+    </script>
     <style>
         :root {
             --primary-color: #1d3a6b;
@@ -856,29 +875,6 @@
                 <!-- Order cards will be dynamically added here -->
             </div>
         </div>
-        
-        <!-- Delivery History -->
-        <div class="card">
-            <h2 class="card-title"><i class="fas fa-history"></i> Delivery History</h2>
-            <div class="table-responsive">
-                <table class="history-table">
-                    <thead>
-                        <tr>
-                            <th>Order ID</th>
-                            <th>Customer</th>
-                            <th>Contact</th>
-                            <th>Address</th>
-                            <th>Items</th>
-                            <th>Date Delivered</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="historyTableBody">
-                        <!-- Will be populated dynamically -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
     </div>
     
     <!-- Add this before the closing </body> tag -->
@@ -984,7 +980,6 @@
                 // Load dashboard data
                 await loadRiderInfo();
                 await loadAssignedOrders();
-                await loadDeliveryHistory();
 
                 // Set up real-time updates
                 setupRealtimeUpdates();
@@ -1368,10 +1363,20 @@
                                         onclick="startDelivery('${assignedOrder.id}', '${assignedOrder.email || ''}', '${(assignedOrder.name || '').replace(/'/g, "\\'")}', '${assignedOrder.total_price || assignedOrder.total_amount || 0}', currentRider?.name || 'Delivery Rider')">
                                     <i class="fas fa-motorcycle"></i> Start Delivery
                                 </button>
+                                <button class="btn btn-danger" 
+                                        onclick="cancelOrder('${assignedOrder.id}')"
+                                        style="margin-top: 8px; width: 100%;">
+                                    <i class="fas fa-times-circle"></i> Cancel Order
+                                </button>
                             ` : assignedOrder.status === 'Delivery' ? ` 
                                 <button class="btn btn-success" 
                                         onclick="updateOrderStatus('${assignedOrder.id}', 'Delivered')">
                                     <i class="fas fa-check-circle"></i> Mark as Delivered
+                                </button>
+                                <button class="btn btn-danger" 
+                                        onclick="cancelOrder('${assignedOrder.id}')"
+                                        style="margin-top: 8px; width: 100%;">
+                                    <i class="fas fa-times-circle"></i> Cancel Order
                                 </button>
                             ` : ''}
                         </div>
@@ -1508,7 +1513,7 @@
                             method: 'POST',
                             headers: {
                                 'accept': 'application/json',
-                                'api-key': import.meta.env.VITE_BREVO_API_KEY || '',
+                                'api-key': window.brevoConfig?.apiKey || '',
                                 'content-type': 'application/json'
                             },
                             body: JSON.stringify({
@@ -1579,13 +1584,10 @@
                 // Refresh the orders list after a short delay
                 setTimeout(async () => {
                     try {
-                        await Promise.all([
-                            loadAssignedOrders(),
-                            loadDeliveryHistory()
-                        ]);
-                        console.log('Order lists refreshed successfully');
+                        await loadAssignedOrders();
+                        console.log('Order list refreshed successfully');
                     } catch (refreshError) {
-                        console.error('Error refreshing order lists:', refreshError);
+                        console.error('Error refreshing order list:', refreshError);
                     }
                 }, 1000);
 
@@ -2039,11 +2041,12 @@
                 return false;
             }
 
-            const brevoApiKey = import.meta.env.VITE_BREVO_API_KEY || '';
+            // Get Brevo configuration
+            const brevoApiKey = window.env?.VITE_BREVO_API_KEY || '';
             const brevoUrl = 'https://api.brevo.com/v3/smtp/email';
 
             if (!brevoApiKey) {
-                console.error('Brevo API key is not configured. Please check your .env file.');
+                console.error('Brevo API key is not configured. Please check your configuration.');
                 return false;
             }
 
@@ -2220,6 +2223,79 @@
                     startButton.disabled = false;
                     startButton.innerHTML = originalText || '<i class="fas fa-motorcycle"></i> Start Delivery'; 
                 }
+            }
+        }
+        // Function to handle order cancellation
+        async function cancelOrder(orderId) {
+            if (!confirm('Are you sure you want to cancel this order? This action cannot be undone.')) {
+                return;
+            }
+
+            try {
+                const supabase = getSupabase();
+                
+                // Show loading state
+                const buttons = document.querySelectorAll(`button[onclick*="cancelOrder('${orderId}'"`);
+                buttons.forEach(btn => {
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cancelling...';
+                });
+                
+                // Update order status to Cancelled
+                const { data, error } = await supabase
+                    .from('orders')
+                    .update({ 
+                        status: 'Cancelled',
+                        updated_at: new Date().toISOString(),
+                        assigned_rider_id: null
+                    })
+                    .eq('id', orderId);
+
+                if (error) {
+                    console.error('Error cancelling order:', error);
+                    throw new Error('Failed to cancel order: ' + error.message);
+                }
+
+                // Show success message
+                showNotification('Order has been cancelled successfully', 'success');
+
+                // Remove the order card from the UI
+                const orderCard = document.querySelector(`.order-card[data-order-id="${orderId}"]`);
+                if (orderCard) {
+                    orderCard.style.opacity = '0.5';
+                    orderCard.style.pointerEvents = 'none';
+                    
+                    // Fade out and remove after animation
+                    setTimeout(() => {
+                        orderCard.style.transition = 'opacity 0.3s ease';
+                        orderCard.style.opacity = '0';
+                        
+                        setTimeout(() => {
+                            orderCard.remove();
+                            
+                            // If no more orders, show empty state
+                            const ordersGrid = document.querySelector('.assigned-orders-grid');
+                            if (ordersGrid && ordersGrid.children.length === 0) {
+                                const noOrdersDiv = document.createElement('div');
+                                noOrdersDiv.className = 'no-orders';
+                                noOrdersDiv.innerHTML = `
+                                    <i class="fas fa-clipboard-list"></i>
+                                    <p>No orders assigned at the moment.</p>`;
+                                ordersGrid.parentNode.replaceChild(noOrdersDiv, ordersGrid);
+                            }
+                        }, 300);
+                    }, 100);
+                }
+            } catch (error) {
+                console.error('Error in cancelOrder:', error);
+                showNotification('Failed to cancel order: ' + (error.message || 'Unknown error'), 'error');
+                
+                // Re-enable buttons on error
+                const buttons = document.querySelectorAll(`button[onclick*="cancelOrder('${orderId}'"]`);
+                buttons.forEach(btn => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-times-circle"></i> Cancel Order';
+                });
             }
         }
     </script>
