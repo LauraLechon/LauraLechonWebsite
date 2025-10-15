@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Booking Form</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="icon" type="image/x-icon" href="images/logo.png">
+    <link rel="icon" type="image/x-icon" href="logo.png">
     <style>
         :root {
             --primary-color: #3E2217;
@@ -523,9 +523,9 @@
         <div class="content">
             <!-- Image Section -->
             <div class="image-section">
-                <img src="images/Laura Logo.png" alt="Laura's Lechon Logo">
-                <img src="images/Elite Business.png" alt="Elite Business Award">
-                <img src="images/Elite Leadership.png" alt="Elite Leadership Award">
+                <img src="Laura Logo.png" alt="Laura's Lechon Logo">
+                <img src="Elite Business.png" alt="Elite Business Award">
+                <img src="Elite Leadership.png" alt="Elite Leadership Award">
             </div>
             
             <!-- Form Section -->
@@ -573,7 +573,7 @@
                 <h2><i class="fas fa-weight-hanging"></i> Available Sizes:</h2>
                 <div class="sizes">
                     <div class="size-box" data-size="Midget">
-                        <img src="images/Midget.jpg" alt="Midget">
+                        <img src="Midget.jpg" alt="Midget">
                         <div class="size-info">
                             <div class="size-name">Midget</div>
                             <div>2kg Raw Weight</div>
@@ -583,7 +583,7 @@
                         <input type="number" class="size-qty" id="midgetQty" min="0" value="0">
                     </div>
                     <div class="size-box" data-size="Junior">
-                        <img src="images/Junior.jpg" alt="Junior">
+                        <img src="Junior.jpg" alt="Junior">
                         <div class="size-info">
                             <div class="size-name">Junior</div>
                             <div>3kg Raw Weight</div>
@@ -593,7 +593,7 @@
                         <input type="number" class="size-qty" id="juniorQty" min="0" value="0">
                     </div>
                     <div class="size-box" data-size="Small">
-                        <img src="images/Small.jpg" alt="Small">
+                        <img src="Small.jpg" alt="Small">
                         <div class="size-info">
                             <div class="size-name">Small</div>
                             <div>4kg Raw Weight</div>
@@ -603,7 +603,7 @@
                         <input type="number" class="size-qty" id="smallQty" min="0" value="0">
                     </div>
                     <div class="size-box" data-size="Medium">
-                        <img src="images/Medium.jpg" alt="Medium">
+                        <img src="Medium.jpg" alt="Medium">
                         <div class="size-info">
                             <div class="size-name">Medium</div>
                             <div>5kg Raw Weight</div>
@@ -613,7 +613,7 @@
                         <input type="number" class="size-qty" id="mediumQty" min="0" value="0">
                     </div>
                     <div class="size-box" data-size="Large">
-                        <img src="images/Large.jpg" alt="Large">
+                        <img src="Large.jpg" alt="Large">
                         <div class="size-info">
                             <div class="size-name">Large</div>
                             <div>6kg Raw Weight</div>
@@ -623,7 +623,7 @@
                         <input type="number" class="size-qty" id="largeQty" min="0" value="0">
                     </div>
                     <div class="size-box" data-size="XL">
-                        <img src="images/XL.jpg" alt="XL">
+                        <img src="XL.jpg" alt="XL">
                         <div class="size-info">
                             <div class="size-name">XL</div>
                             <div>7kg Raw Weight</div>
@@ -633,7 +633,7 @@
                         <input type="number" class="size-qty" id="xlQty" min="0" value="0">
                     </div>
                     <div class="size-box" data-size="XXL">
-                        <img src="images/XXL.jpg" alt="XXL">
+                        <img src="XXL.jpg" alt="XXL">
                         <div class="size-info">
                             <div class="size-name">XXL</div>
                             <div>8kg Raw Weight</div>
@@ -643,7 +643,7 @@
                         <input type="number" class="size-qty" id="xxlQty" min="0" value="0">
                     </div>
                     <div class="size-box" data-size="XXXL">
-                        <img src="images/XXXL.jpg" alt="XXXL">
+                        <img src="XXXL.jpg" alt="XXXL">
                         <div class="size-info">
                             <div class="size-name">XXXL</div>
                             <div>11kg Raw Weight</div>
@@ -746,7 +746,7 @@
                     <p><strong>Account Name:</strong> LY**J NA****M P.</p>
                     <p>Please send the payment to the GCash number above and enter the reference number below.</p>
                     <div class="qr-code-container">
-                        <img src="images/gcash-qr.jpg" alt="GCash QR Code" class="qr-code">
+                        <img src="gcash-qr.jpg" alt="GCash QR Code" class="qr-code">
                         <p class="qr-note">Scan QR code to pay</p>
                     </div>
                 </div>
@@ -807,25 +807,43 @@
             document.getElementById('deliveryAddress').addEventListener('input', validateAddress);
             
             // Proceed button click handler
-            document.getElementById('proceedBtn').addEventListener('click', validateForm);
-            
-            // Confirm payment button click handler
-            document.getElementById('confirmPaymentBtn').addEventListener('click', showOrderSummary);
-            
-            // Place order button click handler
-            document.getElementById('placeOrderBtn').addEventListener('click', placeOrder);
-            
-            // Image upload preview
-            document.getElementById('uploadImage').addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = function(event) {
-                        document.getElementById('uploadedImagePreview').src = event.target.result;
-                        document.getElementById('uploadedImagePreview').style.display = 'block';
-                        document.getElementById('uploadImageError').style.display = 'none';
-                    };
-                    reader.readAsDataURL(file);
+            // Wait for DOM to be fully loaded
+            document.addEventListener('DOMContentLoaded', function() {
+                // Proceed button
+                const proceedBtn = document.getElementById('proceedBtn');
+                if (proceedBtn) {
+                    proceedBtn.addEventListener('click', validateForm);
+                }
+                
+                // Confirm payment button
+                const confirmPaymentBtn = document.getElementById('confirmPaymentBtn');
+                if (confirmPaymentBtn) {
+                    confirmPaymentBtn.addEventListener('click', showOrderSummary);
+                }
+                
+                // Place order button
+                const placeOrderBtn = document.getElementById('placeOrderBtn');
+                if (placeOrderBtn) {
+                    placeOrderBtn.addEventListener('click', placeOrder);
+                }
+                
+                // Image upload preview
+                const uploadImage = document.getElementById('uploadImage');
+                if (uploadImage) {
+                    uploadImage.addEventListener('change', function(e) {
+                        const file = e.target.files[0];
+                        if (file) {
+                            const reader = new FileReader();
+                            reader.onload = function(event) {
+                                const preview = document.getElementById('uploadedImagePreview');
+                                const error = document.getElementById('uploadImageError');
+                                if (preview) preview.src = event.target.result;
+                                if (preview) preview.style.display = 'block';
+                                if (error) error.style.display = 'none';
+                            };
+                            reader.readAsDataURL(file);
+                        }
+                    });
                 }
             });
             
