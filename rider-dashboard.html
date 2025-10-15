@@ -161,53 +161,43 @@
     <script src="https://smtpjs.com/v3/smtp.js"></script>
     <!-- Load configuration -->
     <script src="config.js"></script>
-    <!-- Load environment variables from Vercel -->
     <script>
-        // Initialize environment configuration
-        window.env = window.env || {};
+        // Check for production environment (Vercel sets this)
+        const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
         
-        // Check for Vercel environment variables (injected by Vercel)
-        if (window.__ENV) {
-            // Copy all Vercel environment variables to our window.env
-            Object.assign(window.env, window.__ENV);
-        }
-        
-        // Check for Brevo API key in the environment
-        if (window.env.VITE_BREVO_API_KEY) {
-            console.log('Brevo API key is configured');
-        } else {
-            console.warn('Brevo API key is not configured. Email functionality will be disabled.');
-        }
-    </script>
-    <!-- Load local overrides if in development -->
-    <script>
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            console.log('Running in development environment');
-            
-            // Function to load local config
-            function loadLocalConfig() {
-                return new Promise((resolve) => {
-                    if (window.env.VITE_BREVO_API_KEY) {
-                        resolve();
-                        return;
-                    }
-                    
-                    const script = document.createElement('script');
-                    script.src = 'config.local.js';
-                    script.onload = () => {
-                        console.log('Local configuration loaded');
-                        resolve();
-                    };
-                    script.onerror = () => {
-                        console.warn('Failed to load local configuration');
-                        resolve();
-                    };
-                    document.head.appendChild(script);
-                });
+        // In production, use environment variables if available (Vercel)
+        if (isProduction) {
+            console.log('Running in production environment');
+            // Vercel will inject these environment variables at build time
+            if (typeof process !== 'undefined' && process.env.VITE_BREVO_API_KEY) {
+                window.brevoConfig = window.brevoConfig || {};
+                window.brevoConfig.apiKey = process.env.VITE_BREVO_API_KEY;
+                window.brevoConfig.apiUrl = 'https://api.brevo.com/v3/smtp/email';
             }
-            
-            // Wait for the DOM to be ready
-            document.addEventListener('DOMContentLoaded', loadLocalConfig);
+        } 
+        // In development, load local config if it exists
+        else {
+            console.log('Running in development environment');
+            // Function to check if file exists
+            function fileExists(url) {
+                try {
+                    const http = new XMLHttpRequest();
+                    http.open('HEAD', url, false);
+                    http.send();
+                    return http.status !== 404;
+                } catch (e) {
+                    console.warn('Error checking for config file:', e.message);
+                    return false;
+                }
+            }
+
+            // Load local config if it exists
+            if (fileExists('config.local.js')) {
+                console.log('Loading local configuration');
+                document.write('<script src="config.local.js?t=' + new Date().getTime() + '"><\/script>');
+            } else {
+                console.warn('No local configuration found (config.local.js)');
+            }
         }
     </script>
     <style>
