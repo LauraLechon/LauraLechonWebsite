@@ -52,13 +52,17 @@
 
         // Initialize the app after config is loaded
         document.addEventListener('DOMContentLoaded', function() {
-            // Log configuration status
-            if (window.brevoConfig && window.brevoConfig.apiKey) {
+            // Log configuration status - use either window.brevoConfig or window.env.VITE_BREVO_API_KEY
+            const hasBrevoConfig = (window.brevoConfig && window.brevoConfig.apiKey) || 
+                                (window.env && window.env.VITE_BREVO_API_KEY);
+            
+            if (hasBrevoConfig) {
                 console.log('Brevo API key is configured');
+                // Ensure we have a single source of truth for the API key
+                window.brevoConfig = window.brevoConfig || {};
+                window.brevoConfig.apiKey = window.brevoConfig.apiKey || (window.env && window.env.VITE_BREVO_API_KEY);
+                window.brevoConfig.apiUrl = window.brevoConfig.apiUrl || 'https://api.brevo.com/v3/smtp/email';
             } else {
-                console.warn('Brevo API key is not configured. Email functionality will be disabled.');
-            }
-            if (!window.env || !window.env.VITE_BREVO_API_KEY) {
                 console.warn('Brevo API key is not configured. Email functionality will be disabled.');
             }
             
