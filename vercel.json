@@ -2,15 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "*.{html,js,css}",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "**/*.{png,jpg,jpeg,gif,ico,svg,webp,json,xml,woff,woff2,ttf,eot}",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "images/*",
+      "src": "**/*",
       "use": "@vercel/static"
     }
   ],
