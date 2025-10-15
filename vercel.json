@@ -7,6 +7,7 @@
     }
   ],
   "routes": [
+    { "src": "/(.*\\.(?:js|css|png|jpg|jpeg|gif|ico|svg|webp|json|xml|woff|woff2|ttf|eot))", "dest": "/$1" },
     { "src": "/", "dest": "/index.html" },
     { "src": "/admin", "dest": "/admin.html" },
     { "src": "/admin-login", "dest": "/admin-login.html" },
@@ -14,7 +15,7 @@
     { "src": "/rider-login", "dest": "/rider-login.html" },
     { "src": "/rider-dashboard", "dest": "/rider-dashboard.html" },
     { "src": "/rider-signup", "dest": "/rider-signup.html" },
-    { "src": "/(.*\\.(?:js|css|png|jpg|jpeg|gif|ico|svg|webp|json|xml|woff|woff2|ttf|eot))", "dest": "/$1" },
+    { "src": "/([^/]+\\.html)$", "dest": "/$1" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
