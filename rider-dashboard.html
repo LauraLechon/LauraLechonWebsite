@@ -161,25 +161,55 @@
     <script src="https://smtpjs.com/v3/smtp.js"></script>
     <!-- Load configuration -->
     <script src="config.js"></script>
-    <!-- Load local overrides if they exist -->
     <script>
-        // Function to check if file exists
-        function fileExists(url) {
-            const http = new XMLHttpRequest();
-            http.open('HEAD', url, false);
-            http.send();
-            return http.status !== 404;
-        }
+        // Initialize configuration
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check for production environment (Vercel sets this)
+            const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+            
+            // In production, use environment variables if available (Vercel)
+            if (isProduction) {
+                console.log('Running in production environment');
+                // Vercel will inject these environment variables at build time
+                if (typeof process !== 'undefined' && process.env.VITE_BREVO_API_KEY) {
+                    window.env = window.env || {};
+                    window.env.VITE_BREVO_API_KEY = process.env.VITE_BREVO_API_KEY;
+                }
+            } 
+            // In development, load local config if it exists
+            else if (!window.env?.VITE_BREVO_API_KEY) {
+                console.log('Running in development environment');
+                // Function to check if file exists
+                function fileExists(url) {
+                    try {
+                        const http = new XMLHttpRequest();
+                        http.open('HEAD', url, false);
+                        http.send();
+                        return http.status !== 404;
+                    } catch (e) {
+                        console.warn('Error checking for config file:', e.message);
+                        return false;
+                    }
+                }
 
-        // Load local config if it exists
-        if (fileExists('config.local.js')) {
-            document.write('<script src="config.local.js"><\/script>');
-        }
+                // Load local config if it exists
+                if (fileExists('config.local.js')) {
+                    console.log('Loading local configuration');
+                    const script = document.createElement('script');
+                    script.src = 'config.local.js';
+                    document.head.appendChild(script);
+                } else {
+                    console.warn('No local configuration found (config.local.js)');
+                }
+            }
 
-        // Check if Brevo API key is configured
-        if (!window.env || !window.env.VITE_BREVO_API_KEY) {
-            console.warn('Brevo API key is not configured. Email functionality will be disabled.');
-        }
+            // Check if Brevo API key is configured
+            if (!window.env?.VITE_BREVO_API_KEY) {
+                console.warn('Brevo API key is not configured. Email functionality will be disabled.');
+            } else {
+                console.log('Brevo API key is configured');
+            }
+        });
     </script>
     <style>
         :root {
