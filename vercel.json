@@ -2,21 +2,20 @@
   "version": 2,
   "builds": [
     {
-      "src": "**/*",
+      "src": "Website/**/*",
       "use": "@vercel/static"
     }
   ],
   "routes": [
-    { "src": "/admin", "dest": "/admin.html" },
-    { "src": "/admin-login", "dest": "/admin-login.html" },
-    { "src": "/booking", "dest": "/booking.html" },
-    { "src": "/rider-login", "dest": "/rider-login.html" },
-    { "src": "/rider-dashboard", "dest": "/rider-dashboard.html" },
-    { "src": "/rider-signup", "dest": "/rider-signup.html" },
-    
-    { "src": "/(.*)\\.(js|css|png|jpg|jpeg|gif|ico|svg|webp|json|xml|woff|woff2|ttf|eot)", "dest": "/$1.$2" },
-    
-    { "src": "/", "dest": "/index.html" },
-    { "src": "/(.*)", "status": 404, "dest": "/404.html" }
+    { "src": "/", "dest": "/Website/index.html" },
+    { "src": "/admin", "dest": "/Website/admin.html" },
+    { "src": "/admin-login", "dest": "/Website/admin-login.html" },
+    { "src": "/booking", "dest": "/Website/booking.html" },
+    { "src": "/rider-login", "dest": "/Website/rider-login.html" },
+    { "src": "/rider-dashboard", "dest": "/Website/rider-dashboard.html" },
+    { "src": "/rider-signup", "dest": "/Website/rider-signup.html" },
+    { "src": "/([^/]+\\.html)", "dest": "/Website/$1" },
+    { "src": "/(.*\\.(?:js|css|png|jpg|jpeg|gif|ico|svg|webp|json|xml|woff|woff2|ttf|eot))", "dest": "/Website/$1" },
+    { "src": "/.*", "dest": "/Website/index.html" }
   ]
 }
