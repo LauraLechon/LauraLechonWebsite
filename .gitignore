@@ -4,8 +4,10 @@
 .env.development
 .env.production
 .env.example
-config.js
-config.local.js
+Website/config.local.js  # Contains actual API keys - DO NOT COMMIT
+
+# Local configuration overrides
+*.local.*
 
 # Dependencies
 node_modules/
