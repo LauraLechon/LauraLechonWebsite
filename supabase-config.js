@@ -1,11 +1,15 @@
 // supabase-config.js - safe client init
-const SUPABASE_URL = 'https://bugccvyjkxevyfesivkb.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1Z2Njdnlqa3hldnlmZXNpdmtiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU5NDI2OTIsImV4cCI6MjA2MTUxODY5Mn0.pr1GyDAKPIi4-1Jvym8DPG5AndOI5qYu44RbxeQuQ0Y';
+// NOTE: Supabase anon keys are safe to expose in client-side code when RLS is properly configured
+// They only provide limited access based on your Row Level Security policies
 
+// Load configuration from environment or config files
+const SUPABASE_URL = window.env?.VITE_SUPABASE_URL || 'https://bugccvyjkxevyfesivkb.supabase.co';
+const SUPABASE_KEY = window.env?.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1Z2Njdnlqa3hldnlmZXNpdmtiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU5NDI2OTIsImV4cCI6MjA2MTUxODY5Mn0.pr1GyDAKPIi4-1Jvym8DPG5AndOI5qYu44RbxeQuQ0Y';
 
 // Make Brevo API key available globally
+// Load from config file instead of hardcoding
 window.brevoConfig = {
-    apiKey: BREVO_API_KEY,
+    apiKey: window.env?.VITE_BREVO_API_KEY || '',
     apiUrl: 'https://api.brevo.com/v3/smtp/email'
 };
 
