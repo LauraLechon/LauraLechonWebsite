@@ -10,69 +10,91 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js"></script>
     <!-- Load configuration -->
-    <script src="config.js"></script>
     <script>
+        // Initialize brevoConfig if it doesn't exist
+        window.brevoConfig = window.brevoConfig || {};
+        
+        // Set default API URL
+        window.brevoConfig.apiUrl = 'https://api.brevo.com/v3/smtp/email';
+        
         // Check for production environment (Vercel sets this)
         const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
         
-        // In production, use environment variables if available (Vercel)
-        if (isProduction) {
-            console.log('Running in production environment');
-            // Vercel will inject these environment variables at build time
-            if (typeof process !== 'undefined' && process.env.VITE_BREVO_API_KEY) {
-                window.brevoConfig = window.brevoConfig || {};
-                window.brevoConfig.apiKey = process.env.VITE_BREVO_API_KEY;
-                window.brevoConfig.apiUrl = 'https://api.brevo.com/v3/smtp/email';
-            }
-        } 
-        // In development, load local config if it exists
-        else {
-            console.log('Running in development environment');
-            // Function to check if file exists
-            function fileExists(url) {
-                try {
-                    const http = new XMLHttpRequest();
-                    http.open('HEAD', url, false);
-                    http.send();
-                    return http.status !== 404;
-                } catch (e) {
-                    console.warn('Error checking file:', e);
-                    return false;
-                }
-            }
-
-            // Load local config if it exists
-            if (fileExists('config.local.js')) {
-                console.log('Loading local configuration');
-                document.write('<script src="config.local.js?t=' + new Date().getTime() + '"><\/script>');
-            } else {
-                console.warn('No local configuration found (config.local.js)');
+        // Function to check if file exists
+        function fileExists(url) {
+            try {
+                const http = new XMLHttpRequest();
+                http.open('HEAD', url, false);
+                http.send();
+                return http.status !== 404;
+            } catch (e) {
+                console.warn('Error checking file:', e);
+                return false;
             }
         }
-
+        
+        // Function to load configuration
+        function loadConfig() {
+            // In production, try to load from Vercel environment variables
+            if (isProduction) {
+                console.log('Running in production environment');
+                // If we're in Vercel, environment variables are injected at build time
+                if (typeof process !== 'undefined' && process.env.VITE_BREVO_API_KEY) {
+                    window.brevoConfig.apiKey = process.env.VITE_BREVO_API_KEY;
+                    console.log('Loaded Brevo API key from Vercel environment variables');
+                }
+            } 
+            // In development, try to load from config.local.js
+            else {
+                console.log('Running in development environment');
+                if (fileExists('config.local.js')) {
+                    console.log('Loading local configuration');
+                    document.write('<script src="config.local.js?t=' + new Date().getTime() + '"><\/script>');
+                } else {
+                    console.warn('No local configuration found (config.local.js)');
+                    // Fall back to config.js if it exists
+                    if (fileExists('config.js')) {
+                        console.log('Loading default configuration');
+                        document.write('<script src="config.js?t=' + new Date().getTime() + '"><\/script>');
+                    }
+                }
+            }
+        }
+        
+        // Load configuration
+        loadConfig();
+        
         // Initialize the app after config is loaded
         document.addEventListener('DOMContentLoaded', function() {
-            // Log configuration status - use either window.brevoConfig or window.env.VITE_BREVO_API_KEY
-            const hasBrevoConfig = (window.brevoConfig && window.brevoConfig.apiKey) || 
-                                (window.env && window.env.VITE_BREVO_API_KEY);
-            
-            if (hasBrevoConfig) {
-                console.log('Brevo API key is configured');
-                // Ensure we have a single source of truth for the API key
-                window.brevoConfig = window.brevoConfig || {};
-                window.brevoConfig.apiKey = window.brevoConfig.apiKey || (window.env && window.env.VITE_BREVO_API_KEY);
-                window.brevoConfig.apiUrl = window.brevoConfig.apiUrl || 'https://api.brevo.com/v3/smtp/email';
-            } else {
-                console.warn('Brevo API key is not configured. Email functionality will be disabled.');
-            }
-            
-            if (window.supabase && typeof initializeApp === 'function') {
-                initializeApp();
-            } else {
-                console.error('Supabase client not properly initialized');
-            }
+            // Small delay to ensure config is loaded
+            setTimeout(function() {
+                // Log configuration status
+                if (window.brevoConfig && window.brevoConfig.apiKey) {
+                    console.log('Brevo API key is configured');
+                    // Ensure we have the latest config values
+                    window.brevoConfig.apiUrl = window.brevoConfig.apiUrl || 'https://api.brevo.com/v3/smtp/email';
+                    
+                    // Log the configuration (without exposing the full key)
+                    console.log('Brevo Config:', {
+                        apiUrl: window.brevoConfig.apiUrl,
+                        hasApiKey: !!window.brevoConfig.apiKey,
+                        apiKeyPrefix: window.brevoConfig.apiKey ? window.brevoConfig.apiKey.substring(0, 6) + '...' : 'Not set'
+                    });
+                } else {
+                    console.warn('Brevo API key is not configured. Email functionality will be disabled.');
+                    console.log('Current brevoConfig:', window.brevoConfig);
+                }
+                
+                if (window.supabase && typeof initializeApp === 'function') {
+                    initializeApp();
+                } else {
+                    console.error('Supabase client not properly initialized');
+                }
+            }, 100); // Small delay to ensure any dynamically loaded configs are available
         });
     </script>
+    <!-- Load config.js after setting up the loading logic -->
+    <script src="config.js"></script>
     <link rel="icon" type="image/x-icon" href="adminlogo.png">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
