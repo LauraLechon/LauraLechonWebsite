@@ -102,45 +102,23 @@
             }, 100); // Small delay to ensure any dynamically loaded configs are available
         });
     </script>
-    <!-- Load environment-specific configuration -->
-    <script src="/env.js" id="env-config"></script>
+    <!-- Load environment variables first -->
+    <script src="/env.js"></script>
     
     <!-- Initialize configuration -->
     <script>
-        // Initialize environment and configuration
-        window.ENV = window.ENV || {};
-        
-        // Set default configuration
         window.brevoConfig = {
             apiUrl: 'https://api.brevo.com/v3/smtp/email',
-            apiKey: null,
+            apiKey: window.VITE_BREVO_API_KEY || null,
             isConfigured: false
         };
         
-        // For local development, you can create a public/env.js file with:
-        // window.ENV = { VITE_BREVO_API_KEY: 'your_key_here' };
-        
-        // Check for environment variables
-        if (window.ENV.VITE_BREVO_API_KEY) {
-            window.brevoConfig.apiKey = window.ENV.VITE_BREVO_API_KEY;
-            console.log('API key loaded from window.ENV');
-        }
-        
-        // Also check for Vercel's environment variables
-        if (window.VITE_BREVO_API_KEY) {
-            window.brevoConfig.apiKey = window.VITE_BREVO_API_KEY;
-            console.log('API key loaded from window.VITE_BREVO_API_KEY');
-        }
-        
-        // Mark as configured if we have an API key
-        window.brevoConfig.isConfigured = !!window.brevoConfig.apiKey;
-        
-        console.log('Initial configuration:', {
-            hasApiKey: !!window.brevoConfig.apiKey,
-            apiKeyPrefix: window.brevoConfig.apiKey ? 
-                (String(window.brevoConfig.apiKey).substring(0, 4) + '...') : 'Not set'
-        });
+        // For local development, you can uncomment and set your API key here
+        // window.brevoConfig.apiKey = 'your_brevo_api_key_here';
     </script>
+    
+    <!-- Load config.js -->
+    <script src="config.js"></script>
     
     <!-- Load other resources -->
     <link rel="icon" type="image/x-icon" href="adminlogo.png">
@@ -154,6 +132,10 @@
             // Check if configuration is loaded
             if (!window.brevoConfig || !window.brevoConfig.isConfigured) {
                 console.warn('Configuration not properly loaded. Some features may be disabled.');
+            } else if (window.brevoConfig.apiKey) {
+                console.log('Brevo API key is configured');
+            } else {
+                console.warn('Brevo API key is not configured. Email functionality will be disabled.');
             }
             
             // Check if Supabase is available
