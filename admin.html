@@ -102,24 +102,45 @@
             }, 100); // Small delay to ensure any dynamically loaded configs are available
         });
     </script>
-    <!-- Initialize environment and configuration -->
+    <!-- Load environment-specific configuration -->
+    <script src="/env.js" id="env-config"></script>
+    
+    <!-- Initialize configuration -->
     <script>
-        // Initialize ENV object if it doesn't exist
+        // Initialize environment and configuration
         window.ENV = window.ENV || {};
         
-        // Initialize brevoConfig with default values
-        window.brevoConfig = window.brevoConfig || {
+        // Set default configuration
+        window.brevoConfig = {
             apiUrl: 'https://api.brevo.com/v3/smtp/email',
             apiKey: null,
             isConfigured: false
         };
         
-        // For local development, you can uncomment and set your API key here
-        // window.ENV.VITE_BREVO_API_KEY = 'your_brevo_api_key_here';
+        // For local development, you can create a public/env.js file with:
+        // window.ENV = { VITE_BREVO_API_KEY: 'your_key_here' };
+        
+        // Check for environment variables
+        if (window.ENV.VITE_BREVO_API_KEY) {
+            window.brevoConfig.apiKey = window.ENV.VITE_BREVO_API_KEY;
+            console.log('API key loaded from window.ENV');
+        }
+        
+        // Also check for Vercel's environment variables
+        if (window.VITE_BREVO_API_KEY) {
+            window.brevoConfig.apiKey = window.VITE_BREVO_API_KEY;
+            console.log('API key loaded from window.VITE_BREVO_API_KEY');
+        }
+        
+        // Mark as configured if we have an API key
+        window.brevoConfig.isConfigured = !!window.brevoConfig.apiKey;
+        
+        console.log('Initial configuration:', {
+            hasApiKey: !!window.brevoConfig.apiKey,
+            apiKeyPrefix: window.brevoConfig.apiKey ? 
+                (String(window.brevoConfig.apiKey).substring(0, 4) + '...') : 'Not set'
+        });
     </script>
-    
-    <!-- Load configuration -->
-    <script src="config.js"></script>
     
     <!-- Load other resources -->
     <link rel="icon" type="image/x-icon" href="adminlogo.png">
