@@ -35,41 +35,39 @@
         
         // Function to load configuration
         function loadConfig() {
-            // In production, environment variables should be injected at build time
-            if (isProduction) {
-                console.log('Running in production environment');
-                
-                // Check for Vite environment variables (injected during build)
-                if (window.importMeta && window.importMeta.env && window.importMeta.env.VITE_BREVO_API_KEY) {
-                    window.brevoConfig.apiKey = window.importMeta.env.VITE_BREVO_API_KEY;
-                    console.log('Loaded Brevo API key from Vite environment variables');
-                } 
-                // Check for Vercel environment variables
-                else if (window.process && window.process.env && window.process.env.VITE_BREVO_API_KEY) {
-                    window.brevoConfig.apiKey = window.process.env.VITE_BREVO_API_KEY;
-                    console.log('Loaded Brevo API key from process.env');
-                }
-                // Check for environment variable injected by Vercel (client-side)
-                else if (window.brevoConfig && window.brevoConfig.apiKey) {
-                    console.log('Using Brevo API key from window.brevoConfig');
-                } else {
-                    console.warn('Brevo API key not found in environment variables');
-                }
+            console.log('Running in', isProduction ? 'production' : 'development', 'environment');
+            
+            // Check for Vite environment variables (injected during build)
+            if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BREVO_API_KEY) {
+                window.brevoConfig.apiKey = import.meta.env.VITE_BREVO_API_KEY;
+                console.log('Loaded Brevo API key from Vite environment variables');
             } 
+            // Check for environment variable in window object (injected by Vercel)
+            else if (window.VITE_BREVO_API_KEY) {
+                window.brevoConfig.apiKey = window.VITE_BREVO_API_KEY;
+                console.log('Loaded Brevo API key from window.VITE_BREVO_API_KEY');
+            }
             // In development, try to load from config.local.js
-            else {
+            else if (!isProduction) {
                 console.log('Running in development environment');
                 if (fileExists('config.local.js')) {
                     console.log('Loading local configuration');
                     document.write('<script src="config.local.js?t=' + new Date().getTime() + '"><\/script>');
+                    return; // Exit early, the config will be processed when the script loads
                 } else {
                     console.warn('No local configuration found (config.local.js)');
                     // Fall back to config.js if it exists
                     if (fileExists('config.js')) {
                         console.log('Loading default configuration');
                         document.write('<script src="config.js?t=' + new Date().getTime() + '"><\/script>');
+                        return; // Exit early, the config will be processed when the script loads
                     }
                 }
+            }
+            
+            // If we get here, either we're in production or no config files were found
+            if (isProduction && !window.brevoConfig.apiKey) {
+                console.warn('Brevo API key not found in environment variables');
             }
             
             // Ensure we have the latest config values
@@ -80,7 +78,8 @@
                 apiUrl: window.brevoConfig.apiUrl,
                 hasApiKey: !!window.brevoConfig.apiKey,
                 apiKeyPrefix: window.brevoConfig.apiKey ? 
-                    (window.brevoConfig.apiKey.substring(0, 6) + '...') : 'Not set'
+                    (window.brevoConfig.apiKey.substring(0, 6) + '...') : 'Not set',
+                source: 'loadConfig function'
             });
         }
         
