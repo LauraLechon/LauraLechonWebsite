@@ -6,11 +6,7 @@
       "use": "@vercel/static"
     }
   ],
-  "build": {
-    "env": {
-      "VITE_BREVO_API_KEY": "@brevo_api_key"
-    }
-  },
+  
   "routes": [
     { "src": "/(.*\\.(?:js|css|png|jpg|jpeg|gif|ico|svg|webp|json|xml|woff|woff2|ttf|eot))", "dest": "/$1" },
     { "src": "/", "dest": "/index.html" },
