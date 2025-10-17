@@ -37,16 +37,11 @@
         function loadConfig() {
             console.log('Running in', isProduction ? 'production' : 'development', 'environment');
             
-            // Check for Vite environment variables (injected during build)
-            if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BREVO_API_KEY) {
-                window.brevoConfig.apiKey = import.meta.env.VITE_BREVO_API_KEY;
-                console.log('Loaded Brevo API key from Vite environment variables');
+            // Check for environment variables in window.ENV
+            if (window.ENV && window.ENV.VITE_BREVO_API_KEY) {
+                window.brevoConfig.apiKey = window.ENV.VITE_BREVO_API_KEY;
+                console.log('Loaded Brevo API key from window.ENV');
             } 
-            // Check for environment variable in window object (injected by Vercel)
-            else if (window.VITE_BREVO_API_KEY) {
-                window.brevoConfig.apiKey = window.VITE_BREVO_API_KEY;
-                console.log('Loaded Brevo API key from window.VITE_BREVO_API_KEY');
-            }
             // In development, try to load from config.local.js
             else if (!isProduction) {
                 console.log('Running in development environment');
@@ -56,22 +51,14 @@
                     return; // Exit early, the config will be processed when the script loads
                 } else {
                     console.warn('No local configuration found (config.local.js)');
-                    // Fall back to config.js if it exists
-                    if (fileExists('config.js')) {
-                        console.log('Loading default configuration');
-                        document.write('<script src="config.js?t=' + new Date().getTime() + '"><\/script>');
-                        return; // Exit early, the config will be processed when the script loads
-                    }
                 }
-            }
-            
-            // If we get here, either we're in production or no config files were found
-            if (isProduction && !window.brevoConfig.apiKey) {
-                console.warn('Brevo API key not found in environment variables');
             }
             
             // Ensure we have the latest config values
             window.brevoConfig.apiUrl = window.brevoConfig.apiUrl || 'https://api.brevo.com/v3/smtp/email';
+            
+            // Mark as configured
+            window.brevoConfig.isConfigured = true;
             
             // Log configuration status
             console.log('Brevo Config:', {
@@ -115,56 +102,60 @@
             }, 100); // Small delay to ensure any dynamically loaded configs are available
         });
     </script>
-    <!-- Set environment variables -->
+    <!-- Initialize environment and configuration -->
     <script>
-        // Set environment variables here or they can be set by your build process
+        // Initialize ENV object if it doesn't exist
         window.ENV = window.ENV || {};
         
-        // For local development, you can uncomment and set your API key here
-        // window.ENV.VITE_BREVO_API_KEY = 'your_brevo_api_key_here';
-        
-        // Initialize default config
+        // Initialize brevoConfig with default values
         window.brevoConfig = window.brevoConfig || {
             apiUrl: 'https://api.brevo.com/v3/smtp/email',
             apiKey: null,
             isConfigured: false
         };
+        
+        // For local development, you can uncomment and set your API key here
+        // window.ENV.VITE_BREVO_API_KEY = 'your_brevo_api_key_here';
     </script>
     
-    <!-- Load config.js -->
+    <!-- Load configuration -->
     <script src="config.js"></script>
     
+    <!-- Load other resources -->
     <link rel="icon" type="image/x-icon" href="adminlogo.png">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
-    <!-- Initialize the app -->
+    <!-- Application Initialization -->
     <script>
-        function initializeApp() {
+        function initApplication() {
             console.log('Initializing application...');
             
-            if (window.brevoConfig && window.brevoConfig.isConfigured) {
-                console.log('Configuration loaded successfully');
+            // Check if configuration is loaded
+            if (!window.brevoConfig || !window.brevoConfig.isConfigured) {
+                console.warn('Configuration not properly loaded. Some features may be disabled.');
+            }
+            
+            // Check if Supabase is available
+            if (window.supabase) {
+                console.log('Supabase client is available');
                 
-                // Check if Supabase is available
-                if (window.supabase) {
-                    console.log('Supabase client is available');
-                    // Your Supabase initialization code here
+                // Initialize your Supabase app here
+                try {
                     if (typeof initializeApp === 'function') {
                         initializeApp();
                     }
-                } else {
-                    console.error('Supabase client not found');
+                } catch (error) {
+                    console.error('Error initializing application:', error);
                 }
             } else {
-                console.warn('Brevo API key is not configured. Email functionality will be disabled.');
-                // You might want to show a warning to the user here
+                console.error('Supabase client not found. Please check your Supabase initialization.');
             }
         }
         
-        // Wait for DOM to be fully loaded
+        // Start the application when the DOM is fully loaded
         document.addEventListener('DOMContentLoaded', function() {
-            // Small delay to ensure everything is loaded
-            setTimeout(initializeApp, 100);
+            // Small delay to ensure all scripts are loaded
+            setTimeout(initApplication, 100);
         });
     </script>
     <style>
