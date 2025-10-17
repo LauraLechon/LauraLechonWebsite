@@ -35,13 +35,25 @@
         
         // Function to load configuration
         function loadConfig() {
-            // In production, try to load from Vercel environment variables
+            // In production, environment variables should be injected at build time
             if (isProduction) {
                 console.log('Running in production environment');
-                // If we're in Vercel, environment variables are injected at build time
-                if (typeof process !== 'undefined' && process.env.VITE_BREVO_API_KEY) {
-                    window.brevoConfig.apiKey = process.env.VITE_BREVO_API_KEY;
-                    console.log('Loaded Brevo API key from Vercel environment variables');
+                
+                // Check for Vite environment variables (injected during build)
+                if (window.importMeta && window.importMeta.env && window.importMeta.env.VITE_BREVO_API_KEY) {
+                    window.brevoConfig.apiKey = window.importMeta.env.VITE_BREVO_API_KEY;
+                    console.log('Loaded Brevo API key from Vite environment variables');
+                } 
+                // Check for Vercel environment variables
+                else if (window.process && window.process.env && window.process.env.VITE_BREVO_API_KEY) {
+                    window.brevoConfig.apiKey = window.process.env.VITE_BREVO_API_KEY;
+                    console.log('Loaded Brevo API key from process.env');
+                }
+                // Check for environment variable injected by Vercel (client-side)
+                else if (window.brevoConfig && window.brevoConfig.apiKey) {
+                    console.log('Using Brevo API key from window.brevoConfig');
+                } else {
+                    console.warn('Brevo API key not found in environment variables');
                 }
             } 
             // In development, try to load from config.local.js
@@ -59,6 +71,17 @@
                     }
                 }
             }
+            
+            // Ensure we have the latest config values
+            window.brevoConfig.apiUrl = window.brevoConfig.apiUrl || 'https://api.brevo.com/v3/smtp/email';
+            
+            // Log configuration status
+            console.log('Brevo Config:', {
+                apiUrl: window.brevoConfig.apiUrl,
+                hasApiKey: !!window.brevoConfig.apiKey,
+                apiKeyPrefix: window.brevoConfig.apiKey ? 
+                    (window.brevoConfig.apiKey.substring(0, 6) + '...') : 'Not set'
+            });
         }
         
         // Load configuration
@@ -5368,56 +5391,70 @@
                 
                 // Send the email using Brevo API
                 console.log('Sending request to Brevo API...');
-                console.log('Request body:', JSON.stringify(emailData, null, 2));
-                
-                const response = await fetch(brevoUrl, {
-                    method: 'POST',
+                console.log('Request body:', JSON.stringify({
+                    ...emailData,
+                    // Don't log the full API key in production
                     headers: {
-                        'accept': 'application/json',
-                        'api-key': brevoApiKey,
-                        'content-type': 'application/json'
-                    },
-                    body: JSON.stringify(emailData)
-                });
-                
-                console.log('Brevo API response status:', response.status);
-                
-                // Log the response body for debugging
-                const responseText = await response.text();
-                console.log('Brevo API response body:', responseText);
-                
-                // If response is not ok, parse and throw error
-                if (!response.ok) {
-                    let errorData;
-                    try {
-                        errorData = JSON.parse(responseText);
-                    } catch (e) {
-                        errorData = { message: responseText };
+                        ...emailData.headers,
+                        'api-key': '*** (redacted)'
                     }
-                    const errorMessage = errorData.message || `HTTP error! status: ${response.status}`;
-                    throw new Error(errorMessage);
+                }, null, 2));
+                
+                // Ensure the API key is properly trimmed and validated
+                const apiKey = (brevoApiKey || '').trim();
+                if (!apiKey) {
+                    throw new Error('Brevo API key is missing or empty');
                 }
                 
-                // Parse success response
-                let responseData;
                 try {
-                    responseData = JSON.parse(responseText);
-                    console.log('Brevo API success response:', responseData);
-                } catch (e) {
-                    console.log('Could not parse response as JSON');
-                }
+                    const response = await fetch(brevoUrl, {
+                        method: 'POST',
+                        headers: {
+                            'accept': 'application/json',
+                            'api-key': apiKey,
+                            'content-type': 'application/json'
+                        },
+                        body: JSON.stringify(emailData)
+                    });
                 
+                    console.log('Brevo API response status:', response.status);
+                    
+                    // Log the response body for debugging
+                    const responseText = await response.text();
+                    console.log('Brevo API response body:', responseText);
+                    
+                    // If response is not ok, parse and throw error
+                    if (!response.ok) {
+                        let errorData;
+                        try {
+                            errorData = JSON.parse(responseText);
+                        } catch (e) {
+                            errorData = { message: responseText };
+                        }
+                        const errorMessage = errorData.message || `HTTP error! status: ${response.status}`;
+                        throw new Error(errorMessage);
+                    }
+                    
+                    // Parse success response
+                    let responseData;
+                    try {
+                        responseData = JSON.parse(responseText);
+                        console.log('Brevo API success response:', responseData);
+                    } catch (e) {
+                        console.log('Could not parse response as JSON');
+                    }
+                    
                     console.log(`Email sent successfully to ${email}`);
                     return true;
                 } catch (error) {
-                    console.error('Error sending email:', error);
-                    // Rethrow the error to be caught by the caller
+                    console.error('Error sending email to Brevo API:', error);
                     throw error;
                 }
+            } catch (error) {
+                console.error('Error in sendOrderEmail:', error);
+                throw error;
             }
-        
-
-
+        }
         
         // Initialize year and month selectors
         const yearSelector = document.getElementById('yearSelector');
