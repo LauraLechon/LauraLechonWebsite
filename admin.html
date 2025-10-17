@@ -115,10 +115,44 @@
             }, 100); // Small delay to ensure any dynamically loaded configs are available
         });
     </script>
-    <!-- Load config.js as a module -->
-    <script type="module" src="config.js"></script>
+    <!-- Load configuration first -->
+    <script>
+        // Default configuration that can be overridden by config.js
+        window.brevoConfig = window.brevoConfig || {
+            apiUrl: 'https://api.brevo.com/v3/smtp/email',
+            apiKey: null,
+            isConfigured: false
+        };
+    </script>
+    
+    <!-- Load config.js as a regular script -->
+    <script src="config.js"></script>
+    
     <link rel="icon" type="image/x-icon" href="adminlogo.png">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Initialize the app after config is loaded -->
+    <script>
+        function initializeApp() {
+            if (window.brevoConfig && window.brevoConfig.isConfigured) {
+                console.log('Brevo API key is configured');
+                if (window.supabase && typeof initializeApp === 'function') {
+                    initializeApp();
+                } else {
+                    console.error('Supabase client not properly initialized');
+                }
+            } else {
+                console.warn('Brevo API key is not configured. Email functionality will be disabled.');
+                // You might want to show a warning to the user here
+            }
+        }
+        
+        // Wait for DOM to be fully loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Small delay to ensure config is loaded
+            setTimeout(initializeApp, 100);
+        });
+    </script>
     <style>
         :root {
             --primary: #1d3a6b;
