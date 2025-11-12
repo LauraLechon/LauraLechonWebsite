@@ -21,12 +21,9 @@
     { "src": "/([^/]+\\.html)$", "dest": "/$1" },
     { "src": "/(.*)", "dest": "/index.html" }
   ],
-  "env": {
-    "VITE_BREVO_API_KEY": "@brevo_api_key"
-  },
   "build": {
     "env": {
-      "VITE_BREVO_API_KEY": "@brevo_api_key"
+      "VITE_BREVO_API_KEY": ""
     }
   }
 }
