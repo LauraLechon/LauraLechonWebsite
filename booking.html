@@ -1038,36 +1038,64 @@
             document.getElementById('confirmPaymentBtn').disabled = false;
         }
         
-        // Show payment options modal with enhanced reliability
+        // Show payment options modal with production-safe debugging
         function showPaymentOptionsModal() {
-            console.log('showPaymentOptionsModal called');
-            const modal = document.getElementById('paymentOptionsModal');
-            
-            if (!modal) {
-                console.error('Payment options modal element not found!');
-                return;
+            try {
+                // Debug output that works even if console is not available
+                try { console.log('showPaymentOptionsModal called'); } catch(e) {}
+                
+                const modal = document.getElementById('paymentOptionsModal');
+                
+                if (!modal) {
+                    try { console.error('Payment options modal element not found!'); } catch(e) {}
+                    // Show alert as fallback
+                    alert('Error: Could not load payment options. Please try again.');
+                    return;
+                }
+                
+                // Try multiple approaches to show the modal
+                function showModal() {
+                    // Approach 1: Direct style manipulation
+                    try {
+                        modal.style.display = 'flex';
+                        modal.style.opacity = '1';
+                        modal.style.visibility = 'visible';
+                        modal.style.zIndex = '9999';
+                        modal.classList.add('modal-visible');
+                        
+                        // Check if modal is visible
+                        const isVisible = window.getComputedStyle(modal).display === 'flex' && 
+                                       window.getComputedStyle(modal).visibility === 'visible';
+                        
+                        if (!isVisible) throw new Error('Modal not visible after style changes');
+                        
+                        // Scroll to top in case it's off-screen
+                        modal.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        
+                    } catch (e) {
+                        // Approach 2: If direct manipulation fails, try adding a class
+                        try {
+                            modal.className = 'modal modal-visible';
+                            modal.setAttribute('style', 'display: flex !important; opacity: 1 !important; visibility: visible !important; z-index: 9999 !important;');
+                        } catch (e2) {
+                            // Last resort: show an alert
+                            alert('Please select a payment option to continue.');
+                            return false;
+                        }
+                    }
+                    return true;
+                }
+                
+                // Try showing the modal with a fallback
+                if (!showModal()) {
+                    // If first attempt fails, try again after a short delay
+                    setTimeout(showModal, 100);
+                }
+            } catch (error) {
+                // Global error handler
+                console.error('Error in showPaymentOptionsModal:', error);
+                alert('An error occurred while loading payment options. Please try again.');
             }
-            
-            // Force a reflow/repaint
-            modal.style.display = 'none';
-            // Use requestAnimationFrame to ensure the DOM is ready
-            requestAnimationFrame(() => {
-                // Set inline styles to ensure they take precedence
-                Object.assign(modal.style, {
-                    display: 'flex',
-                    opacity: '1',
-                    visibility: 'visible',
-                    zIndex: '9999'
-                });
-                
-                console.log('Modal should be visible now');
-                
-                // Add a class to handle the transition
-                modal.classList.add('modal-visible');
-                
-                // Force a reflow to ensure the browser recognizes the display change
-                void modal.offsetHeight;
-            });
         }
         
         // Close payment options modal
