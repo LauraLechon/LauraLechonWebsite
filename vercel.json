@@ -2,8 +2,11 @@
   "version": 2,
   "builds": [
     {
-      "src": "**/*",
-      "use": "@vercel/static"
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
     }
   ],
   "routes": [
@@ -17,5 +20,13 @@
     { "src": "/rider-signup", "dest": "/rider-signup.html" },
     { "src": "/([^/]+\\.html)$", "dest": "/$1" },
     { "src": "/(.*)", "dest": "/index.html" }
-  ]
+  ],
+  "env": {
+    "VITE_BREVO_API_KEY": "@brevo_api_key"
+  },
+  "build": {
+    "env": {
+      "VITE_BREVO_API_KEY": "@brevo_api_key"
+    }
+  }
 }
