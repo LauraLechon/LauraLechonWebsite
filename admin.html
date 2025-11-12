@@ -5359,17 +5359,6 @@
                     console.log('Running in development mode - attempting to send actual email');
                 }
                 
-                // Send the email using Brevo API
-                console.log('Sending request to Brevo API...');
-                console.log('Request body:', JSON.stringify({
-                    ...emailData,
-                    // Don't log the full API key in production
-                    headers: {
-                        ...emailData.headers,
-                        'api-key': '*** (redacted)'
-                    }
-                }, null, 2));
-                
                 // Ensure the API key is properly trimmed and validated
                 const apiKey = (brevoApiKey || '').trim();
                 console.log('Using Brevo API key:', apiKey ? `${apiKey.substring(0, 6)}...` : 'MISSING');
@@ -5378,8 +5367,17 @@
                     throw new Error('Brevo API key is missing or empty. Please check your configuration.');
                 }
                 
+                // Log the request data (without modifying the original)
+                const logData = { ...emailData };
+                console.log('Sending request to Brevo API...');
+                console.log('Request data:', JSON.stringify({
+                    ...logData,
+                    // Don't log sensitive data
+                    params: logData.params ? '[REDACTED]' : undefined
+                }, null, 2));
+                
                 try {
-                    // Create a new object without the headers property from emailData
+                    // Make sure we don't send any headers in the request body
                     const { headers, ...requestData } = emailData;
                     
                     const response = await fetch(brevoUrl, {
@@ -5389,7 +5387,7 @@
                             'api-key': apiKey,
                             'content-type': 'application/json'
                         },
-                        body: JSON.stringify(requestData)  // Send requestData without headers
+                        body: JSON.stringify(requestData)  // Send only the email data, no headers
                     });
                 
                     console.log('Brevo API response status:', response.status);
