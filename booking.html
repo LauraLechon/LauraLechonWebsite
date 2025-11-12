@@ -4,6 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Booking Form</title>
+    <!-- Cloudflare Challenge Platform -->
+    <script>
+    // Prevent Cloudflare challenge platform errors
+    if (window._cf_chl_opt) {
+        window._cf_chl_opt.cUpoi = 0; // Disable Cloudflare challenge
+    }
+    // Add a global error handler to catch any remaining errors
+    window.onerror = function(message, source, lineno, colno, error) {
+        console.error('Global error:', {message, source, lineno, colno, error});
+        return false; // Prevent the default browser error handler
+    };
+    </script>
     <!-- Using jsDelivr CDN for Font Awesome -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" integrity="sha384-3B6NwesSXE7YJlcLI9RpRqGf2p/EgVH8BgoKTaUrmKNDkHPStTQ3EyoYjCGXaOTS" crossorigin="anonymous">
     <link rel="icon" type="image/x-icon" href="images/logo.png">
@@ -1316,6 +1328,97 @@
             if (event.target.classList.contains('modal')) {
                 event.target.style.display = 'none';
             }
+        });
+
+        // Debugging script for modal visibility
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM fully loaded');
+            
+            // Create debug button
+            const debugBtn = document.createElement('button');
+            debugBtn.textContent = 'Debug Modal';
+            debugBtn.style.position = 'fixed';
+            debugBtn.style.top = '10px';
+            debugBtn.style.right = '10px';
+            debugBtn.style.zIndex = '99999';
+            debugBtn.style.padding = '10px 20px';
+            debugBtn.style.backgroundColor = '#FFD700';
+            debugBtn.style.color = '#000';
+            debugBtn.style.border = 'none';
+            debugBtn.style.borderRadius = '5px';
+            debugBtn.style.cursor = 'pointer';
+            debugBtn.style.fontWeight = 'bold';
+            
+            debugBtn.onclick = function() {
+                console.log('--- DEBUG MODAL ---');
+                const modal = document.getElementById('paymentOptionsModal');
+                
+                if (!modal) {
+                    console.error('❌ Modal element not found!');
+                    alert('Error: Payment modal element not found in DOM');
+                    return;
+                }
+                
+                console.log('✅ Modal found in DOM');
+                
+                // Check visibility
+                const style = window.getComputedStyle(modal);
+                console.log('Modal styles:', {
+                    display: style.display,
+                    visibility: style.visibility,
+                    opacity: style.opacity,
+                    zIndex: style.zIndex,
+                    position: style.position
+                });
+                
+                // Check parent visibility
+                let parent = modal.parentElement;
+                let hiddenParent = null;
+                while (parent) {
+                    const parentStyle = window.getComputedStyle(parent);
+                    if (parentStyle.display === 'none' || 
+                        parentStyle.visibility === 'hidden' || 
+                        parentStyle.opacity === '0') {
+                        hiddenParent = parent;
+                        break;
+                    }
+                    parent = parent.parentElement;
+                }
+                
+                if (hiddenParent) {
+                    console.warn('⚠️ Hidden parent element found:', hiddenParent);
+                    console.log('Parent styles:', window.getComputedStyle(hiddenParent));
+                } else {
+                    console.log('✅ No hidden parent elements found');
+                }
+                
+                // Try to force show the modal
+                console.log('Attempting to show modal...');
+                modal.style.display = 'flex';
+                modal.style.visibility = 'visible';
+                modal.style.opacity = '1';
+                modal.style.zIndex = '9999';
+                
+                // Check if it worked
+                setTimeout(() => {
+                    const newStyle = window.getComputedStyle(modal);
+                    console.log('New modal styles:', {
+                        display: newStyle.display,
+                        visibility: newStyle.visibility,
+                        opacity: newStyle.opacity
+                    });
+                    
+                    if (newStyle.display === 'flex' && newStyle.visibility === 'visible') {
+                        console.log('✅ Modal should now be visible');
+                    } else {
+                        console.error('❌ Failed to show modal');
+                    }
+                }, 100);
+            };
+            
+            // Add debug button to page
+            document.body.appendChild(debugBtn);
+            console.log('Debug button added to page');
         });
     </script>
 <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'937d8ad52b678831',t:'MTc0NTkxNjUyNi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
