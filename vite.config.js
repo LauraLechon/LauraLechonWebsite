@@ -22,6 +22,20 @@ export default defineConfig(({ mode }) => {
         VITE_BREVO_API_KEY: brevoKey
       }
     },
+    plugins: [
+      {
+        name: 'inject-env-vars',
+        transformIndexHtml(html) {
+          // Inject environment variables into the HTML before config.js loads
+          const envScript = `<script>
+window.VITE_BREVO_API_KEY = ${JSON.stringify(brevoKey)};
+window.ENV = window.ENV || {};
+window.ENV.VITE_BREVO_API_KEY = ${JSON.stringify(brevoKey)};
+</script>`;
+          return html.replace('<script src="supabase-config.js"></script>', envScript + '\n    <script src="supabase-config.js"></script>');
+        }
+      }
+    ],
     // Configure the development server
     server: {
       port: 3000,
