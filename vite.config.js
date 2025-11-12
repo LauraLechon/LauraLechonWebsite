@@ -5,18 +5,21 @@ export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
   const env = loadEnv(mode, process.cwd(), '');
   
+  // Also check process.env directly (for Vercel builds)
+  const brevoKey = env.VITE_BREVO_API_KEY || process.env.VITE_BREVO_API_KEY || '';
+  
   return {
     root: '.',
     publicDir: 'public',
     // This will expose all environment variables that start with VITE_ to your client-side code
     define: {
       // For Vite's import.meta.env
-      'import.meta.env.VITE_BREVO_API_KEY': JSON.stringify(env.VITE_BREVO_API_KEY),
+      'import.meta.env.VITE_BREVO_API_KEY': JSON.stringify(brevoKey),
       // For direct access in non-module scripts
-      'window.VITE_BREVO_API_KEY': JSON.stringify(env.VITE_BREVO_API_KEY),
+      'window.VITE_BREVO_API_KEY': JSON.stringify(brevoKey),
       // For Vercel's environment variables
       'window.ENV': {
-        VITE_BREVO_API_KEY: env.VITE_BREVO_API_KEY
+        VITE_BREVO_API_KEY: brevoKey
       }
     },
     // Configure the development server
