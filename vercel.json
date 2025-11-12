@@ -6,9 +6,7 @@
       "use": "@vercel/static"
     }
   ],
-    
   "routes": [
-    { "src": "/env.js", "dest": "/Website/env.js" },
     { "src": "/(.*\\.(?:js|css|png|jpg|jpeg|gif|ico|svg|webp|json|xml|woff|woff2|ttf|eot))", "dest": "/$1" },
     { "src": "/", "dest": "/index.html" },
     { "src": "/admin", "dest": "/admin.html" },
