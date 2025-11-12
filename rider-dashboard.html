@@ -277,12 +277,9 @@
                 }
             }
 
-            // Check if Brevo API key is configured
-            if (!window.env?.VITE_BREVO_API_KEY) {
-                console.warn('Brevo API key is not configured. Email functionality will be disabled.');
-            } else {
-                console.log('Brevo API key is configured');
-            }
+            // Brevo API key check is now handled by the initApp() function
+            console.log('Application initialized. Brevo email service:', 
+                isBrevoConfigured ? 'Enabled' : 'Disabled (check console for details)');
         });
     </script>
     <style>
