@@ -5362,6 +5362,8 @@
                 // Ensure the API key is properly trimmed and validated
                 const apiKey = (brevoApiKey || '').trim();
                 console.log('Using Brevo API key:', apiKey ? `${apiKey.substring(0, 6)}...` : 'MISSING');
+                console.log('API Key length:', apiKey.length);
+                console.log('API Key starts with:', apiKey.substring(0, 8));
                 
                 if (!apiKey) {
                     throw new Error('Brevo API key is missing or empty. Please check your configuration.');
@@ -5370,6 +5372,7 @@
                 // Log the request data (without modifying the original)
                 const logData = { ...emailData };
                 console.log('Sending request to Brevo API...');
+                console.log('Request URL:', brevoUrl);
                 console.log('Request data:', JSON.stringify({
                     ...logData,
                     // Don't log sensitive data
@@ -5380,13 +5383,21 @@
                     // Make sure we don't send any headers in the request body
                     const { headers, ...requestData } = emailData;
                     
+                    // Create the headers object
+                    const requestHeaders = {
+                        'accept': 'application/json',
+                        'api-key': apiKey,
+                        'content-type': 'application/json'
+                    };
+                    
+                    console.log('Request headers:', JSON.stringify({
+                        ...requestHeaders,
+                        'api-key': '*** (redacted)'
+                    }, null, 2));
+                    
                     const response = await fetch(brevoUrl, {
                         method: 'POST',
-                        headers: {
-                            'accept': 'application/json',
-                            'api-key': apiKey,
-                            'content-type': 'application/json'
-                        },
+                        headers: requestHeaders,
                         body: JSON.stringify(requestData)  // Send only the email data, no headers
                     });
                 
