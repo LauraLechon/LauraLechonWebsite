@@ -21,17 +21,19 @@
         
         // Function to initialize the application after config is loaded
         function initApp() {
+            // Update the global flag based on the current state of window.brevoConfig
+            isBrevoConfigured = !!(window.brevoConfig?.isConfigured && window.brevoConfig?.apiKey);
+            
             console.log('Initializing application with Brevo config:', {
                 hasApiKey: !!window.brevoConfig?.apiKey,
                 isConfigured: window.brevoConfig?.isConfigured,
-                source: 'rider-dashboard.html initApp'
+                source: 'rider-dashboard.html initApp',
+                isBrevoConfigured: isBrevoConfigured
             });
-            
-            // Set the global flag
-            isBrevoConfigured = window.brevoConfig?.isConfigured === true;
             
             if (!isBrevoConfigured) {
                 console.warn('Brevo API key is not configured. Email functionality will be disabled.');
+                console.log('Current brevoConfig:', window.brevoConfig);
             } else {
                 console.log('Brevo API is properly configured and ready to use');
             }
@@ -63,7 +65,25 @@
         // Start waiting for config when the page loads
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM fully loaded, waiting for Brevo config...');
-            waitForConfig(initApp);
+            
+            // Check if config is already loaded
+            if (window.brevoConfig?.isConfigured) {
+                console.log('Brevo config already loaded, initializing app...');
+                initApp();
+            } else {
+                // Wait for config to load
+                console.log('Waiting for Brevo config to load...');
+                waitForConfig(initApp);
+            }
+            
+            // Also listen for future config updates
+            const checkConfigInterval = setInterval(() => {
+                if (window.brevoConfig?.isConfigured && !isBrevoConfigured) {
+                    console.log('Brevo config became available after initial load');
+                    isBrevoConfigured = true;
+                    clearInterval(checkConfigInterval);
+                }
+            }, 100);
         });
     </script>
     <script>
@@ -2130,14 +2150,22 @@
                     throw new Error(errorMsg);
                 }
                 
-                // Check if Brevo is configured
-                if (!isBrevoConfigured) {
+                // Double-check Brevo configuration
+                const brevoConfig = window.brevoConfig || {};
+                const configCheck = {
+                    hasConfig: !!brevoConfig,
+                    isConfigured: brevoConfig.isConfigured === true,
+                    hasApiKey: !!(brevoConfig.apiKey && brevoConfig.apiKey.trim()),
+                    apiKeyPrefix: brevoConfig.apiKey ? (brevoConfig.apiKey.substring(0, 6) + '...') : 'None'
+                };
+                
+                console.log('Brevo configuration check:', configCheck);
+                
+                if (!configCheck.isConfigured || !configCheck.hasApiKey) {
                     const errorMsg = 'Email service is not properly configured. Please check your Brevo API key configuration.';
-                    console.error(errorMsg);
+                    console.error(errorMsg, configCheck);
                     throw new Error(errorMsg);
                 }
-                
-                const brevoConfig = window.brevoConfig || {};
                 const brevoUrl = brevoConfig.apiUrl || 'https://api.brevo.com/v3/smtp/email';
                 const brevoApiKey = brevoConfig.apiKey || '';
                 
