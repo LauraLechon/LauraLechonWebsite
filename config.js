@@ -1,4 +1,4 @@
-// config.js - Simple configuration loader
+// config.js - Configuration loader for Vite/Vercel environment
 (function() {
     'use strict';
 
@@ -11,12 +11,19 @@
         isConfigured: false
     };
 
-    // Check for environment variable in window.ENV
-    if (window.ENV && window.ENV.VITE_BREVO_API_KEY) {
+    // Check for Vite environment variables (works in Vercel)
+    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BREVO_API_KEY) {
+        window.brevoConfig.apiKey = import.meta.env.VITE_BREVO_API_KEY;
+        window.brevoConfig.isConfigured = true;
+        console.log('Loaded Brevo API key from Vite environment variables');
+    }
+    // Fallback to window variables (for non-module scripts)
+    else if (window.ENV && window.ENV.VITE_BREVO_API_KEY) {
         window.brevoConfig.apiKey = window.ENV.VITE_BREVO_API_KEY;
+        window.brevoConfig.isConfigured = true;
         console.log('Loaded Brevo API key from window.ENV');
     }
-    // Check for direct environment variable (for Vercel)
+    // Direct window variable (for Vercel server-side)
     else if (window.VITE_BREVO_API_KEY) {
         window.brevoConfig.apiKey = window.VITE_BREVO_API_KEY;
         console.log('Loaded Brevo API key from window.VITE_BREVO_API_KEY');
