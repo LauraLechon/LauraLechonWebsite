@@ -7,6 +7,7 @@ export default defineConfig(({ mode }) => {
   
   return {
     root: '.',
+    publicDir: 'public',
     // This will expose all environment variables that start with VITE_ to your client-side code
     define: {
       // For Vite's import.meta.env
