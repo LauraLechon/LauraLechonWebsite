@@ -8,6 +8,11 @@ export default defineConfig(({ mode }) => {
   // Also check process.env directly (for Vercel builds)
   const brevoKey = env.VITE_BREVO_API_KEY || process.env.VITE_BREVO_API_KEY || '';
   
+  console.log('Vite Build - Brevo API Key Status:');
+  console.log('  env.VITE_BREVO_API_KEY:', env.VITE_BREVO_API_KEY ? '(set)' : '(not set)');
+  console.log('  process.env.VITE_BREVO_API_KEY:', process.env.VITE_BREVO_API_KEY ? '(set)' : '(not set)');
+  console.log('  Final brevoKey:', brevoKey ? '(set)' : '(not set)');
+  
   return {
     root: '.',
     publicDir: 'public',
