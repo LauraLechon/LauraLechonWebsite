@@ -162,43 +162,54 @@
     <!-- Load configuration -->
     <script src="config.js"></script>
     <script>
-        // Check for production environment (Vercel sets this)
-        const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-        
-        // In production, use environment variables if available (Vercel)
-        if (isProduction) {
-            console.log('Running in production environment');
-            // Vercel will inject these environment variables at build time
-            if (typeof process !== 'undefined' && process.env.VITE_BREVO_API_KEY) {
-                window.brevoConfig = window.brevoConfig || {};
-                window.brevoConfig.apiKey = process.env.VITE_BREVO_API_KEY;
-                window.brevoConfig.apiUrl = 'https://api.brevo.com/v3/smtp/email';
-            }
-        } 
-        // In development, load local config if it exists
-        else {
-            console.log('Running in development environment');
-            // Function to check if file exists
-            function fileExists(url) {
-                try {
-                    const http = new XMLHttpRequest();
-                    http.open('HEAD', url, false);
-                    http.send();
-                    return http.status !== 404;
-                } catch (e) {
-                    console.warn('Error checking for config file:', e.message);
-                    return false;
+        // Initialize configuration
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check for production environment (Vercel sets this)
+            const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+            
+            // In production, use environment variables if available (Vercel)
+            if (isProduction) {
+                console.log('Running in production environment');
+                // Vercel will inject these environment variables at build time
+                if (typeof process !== 'undefined' && process.env.VITE_BREVO_API_KEY) {
+                    window.env = window.env || {};
+                    window.env.VITE_BREVO_API_KEY = process.env.VITE_BREVO_API_KEY;
+                }
+            } 
+            // In development, load local config if it exists
+            else if (!window.env?.VITE_BREVO_API_KEY) {
+                console.log('Running in development environment');
+                // Function to check if file exists
+                function fileExists(url) {
+                    try {
+                        const http = new XMLHttpRequest();
+                        http.open('HEAD', url, false);
+                        http.send();
+                        return http.status !== 404;
+                    } catch (e) {
+                        console.warn('Error checking for config file:', e.message);
+                        return false;
+                    }
+                }
+
+                // Load local config if it exists
+                if (fileExists('config.local.js')) {
+                    console.log('Loading local configuration');
+                    const script = document.createElement('script');
+                    script.src = 'config.local.js';
+                    document.head.appendChild(script);
+                } else {
+                    console.warn('No local configuration found (config.local.js)');
                 }
             }
 
-            // Load local config if it exists
-            if (fileExists('config.local.js')) {
-                console.log('Loading local configuration');
-                document.write('<script src="config.local.js?t=' + new Date().getTime() + '"><\/script>');
+            // Check if Brevo API key is configured
+            if (!window.env?.VITE_BREVO_API_KEY) {
+                console.warn('Brevo API key is not configured. Email functionality will be disabled.');
             } else {
-                console.warn('No local configuration found (config.local.js)');
+                console.log('Brevo API key is configured');
             }
-        }
+        });
     </script>
     <style>
         :root {
@@ -2055,59 +2066,197 @@
 
         // Function to send delivery email via Brevo
         async function sendDeliveryEmail(customerEmail, params) {
-            if (!customerEmail) {
-                console.warn('No email address provided for delivery notification');
-                return false;
-            }
-
-            // Get Brevo configuration
-            const brevoApiKey = window.env?.VITE_BREVO_API_KEY || '';
-            const brevoUrl = 'https://api.brevo.com/v3/smtp/email';
-
-            if (!brevoApiKey) {
-                console.error('Brevo API key is not configured. Please check your configuration.');
-                return false;
-            }
-
+            console.log('sendDeliveryEmail called with:', { customerEmail, params });
+            
             try {
-                const response = await fetch(brevoUrl, {
-                    method: "POST",
-                    headers: {
-                        "accept": "application/json",
-                        "api-key": brevoApiKey,
-                        "content-type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        sender: { name: "Laura Lechon", email: "lyrojpulmones@gmail.com" },
-                        to: [{ email: customerEmail, name: params.name || 'Valued Customer' }],
-                        templateId: 4,
-                        params: {
-                            name: params.name || 'Valued Customer',
-                            transaction_id: params.transaction_id || 'N/A',
-                            rider_name: params.rider_name || 'our delivery team',
-                            rider_contact: params.rider_contact || 'Not available',
-                            rider_vehicle: params.rider_vehicle || 'Vehicle',
-                            delivery_address: params.delivery_address || 'Not specified',
-                            delivery_date: params.delivery_date || 'Not specified',
-                            delivery_time: params.delivery_time || 'Not specified',
-                            order_items: params.order_items || 'No items',
-                            remaining_balance: params.remaining_balance || '0.00',
-                            payment_type: params.payment_type || 'Full Payment',
-                            total_amount: params.total_amount || '0.00',
-                            paid_amount: params.paid_amount || '0.00'
-                        }
-                    })
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.message || 'Failed to send email');
+                // Check if email is valid
+                if (!customerEmail || !customerEmail.includes('@')) {
+                    const errorMsg = `Invalid email address: ${customerEmail}`;
+                    console.warn(errorMsg);
+                    throw new Error(errorMsg);
                 }
                 
-                console.log(`Email sent to ${customerEmail}`);
+                // Get Brevo configuration from global config
+                const brevoConfig = window.brevoConfig || {};
+                const brevoUrl = brevoConfig.apiUrl || 'https://api.brevo.com/v3/smtp/email';
+                const brevoApiKey = brevoConfig.apiKey || '';
+                
+                console.log('Using Brevo API key:', brevoApiKey ? '*** (key exists)' : 'MISSING');
+                
+                if (!brevoApiKey) {
+                    const errorMsg = 'Brevo API key is not properly configured. Please check your configuration.';
+                    console.error(errorMsg);
+                    throw new Error(errorMsg);
+                }
+
+                // Helper function to safely format dates
+                const safeFormatDate = (dateValue, options) => {
+                    if (!dateValue) return 'Not specified';
+                    try {
+                        // Handle time-only strings (HH:MM:SS format)
+                        if (typeof dateValue === 'string' && dateValue.match(/^\d{2}:\d{2}:\d{2}$/)) {
+                            // This is a time-only string, create a date object for today with this time
+                            const [hours, minutes, seconds] = dateValue.split(':');
+                            const timeDate = new Date();
+                            timeDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), parseInt(seconds || '0', 10), 0);
+                            return new Intl.DateTimeFormat('en-PH', options).format(timeDate);
+                        }
+                        
+                        const date = new Date(dateValue);
+                        // Check if the date is valid
+                        if (isNaN(date.getTime())) {
+                            // If it's not a valid date, return the original value if it looks like a formatted string
+                            if (typeof dateValue === 'string' && dateValue.length > 0) {
+                                return dateValue;
+                            }
+                            return 'Not specified';
+                        }
+                        return new Intl.DateTimeFormat('en-PH', options).format(date);
+                    } catch (e) {
+                        console.error('Error formatting date:', e, dateValue);
+                        return 'Not specified';
+                    }
+                };
+
+                // Format order items for the email
+                let orderItemsText = 'No items';
+                if (params.order_items) {
+                    if (Array.isArray(params.order_items)) {
+                        orderItemsText = params.order_items.map(item => {
+                            let itemText = `${item.name || 'Item'}`;
+                            if (item.quantity > 1) itemText += ` x${item.quantity}`;
+                            if (item.size) itemText += ` (${item.size})`;
+                            if (item.price) itemText += ` - ₱${Number(item.price).toFixed(2)}`;
+                            return itemText;
+                        }).join('\n');
+                    } else if (typeof params.order_items === 'string') {
+                        orderItemsText = params.order_items;
+                    }
+                }
+
+                // Prepare the email data with template parameters
+                const templateParams = {
+                    // Customer details
+                    name: params.name || 'Valued Customer',
+                    email: customerEmail,
+                    phone: params.phone || params.contact || 'Not specified',
+                    
+                    // Order details
+                    transaction_id: params.transaction_id || `LL-${new Date().toISOString().slice(2, 10).replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`,
+                    order_status: params.order_status || 'On Delivery',
+                    
+                    // Dates and times - format as they appear in the template
+                    date: safeFormatDate(params.date || params.orderDate || new Date(), { year: 'numeric', month: 'long', day: '2-digit' }),
+                    time: safeFormatDate(params.time || params.orderTime || new Date(), { hour: '2-digit', minute: '2-digit', hour12: true }),
+                    
+                    // Delivery details
+                    address: params.delivery_address || params.address || 'Not specified',
+                    delivery_date: safeFormatDate(params.delivery_date || params.estimated_delivery_date || new Date(), { year: 'numeric', month: 'long', day: '2-digit' }),
+                    delivery_time: safeFormatDate(params.delivery_time || params.estimated_delivery_time || new Date(), { hour: '2-digit', minute: '2-digit', hour12: true }),
+                    
+                    // Payment and rider info
+                    payment_method: params.payment_method || params.payment_type || 'Not specified',
+                    payment_status: params.payment_status || 'Pending',
+                    rider_name: params.rider_name || 'Our delivery partner',
+                    rider_contact: params.rider_contact || 'Not available',
+                    rider_vehicle: params.rider_vehicle || 'Vehicle',
+                    
+                    // Order items
+                    order_items: orderItemsText,
+                    
+                    // Financials
+                    total: params.total_amount || '0.00',
+                    paid_amount: params.paid_amount || '0.00',
+                    remaining_balance: params.remaining_balance || '0.00',
+                    
+                    // Additional order details
+                    notes: params.notes || params.special_instructions || 'None'
+                };
+
+                // Log the template parameters being sent to Brevo
+                console.log('Template parameters being sent to Brevo:', JSON.stringify(templateParams, null, 2));
+
+                // Prepare the email data
+                const emailData = {
+                    sender: {
+                        name: "Laura's Lechon",
+                        email: "lyrojpulmones@gmail.com"
+                    },
+                    to: [{
+                        email: customerEmail,
+                        name: templateParams.name
+                    }],
+                    subject: `Order Update - #${templateParams.transaction_id}`,
+                    templateId: 4, // Using template ID 4 for delivery updates
+                    params: templateParams
+                };
+                
+                console.log('Final emailData being sent to Brevo:', JSON.stringify({
+                    ...emailData,
+                    params: 'See above for params details'
+                }, null, 2));
+                
+                // Ensure the API key is properly trimmed and validated
+                const apiKey = (brevoApiKey || '').trim();
+                console.log('Using Brevo API key:', apiKey ? `${apiKey.substring(0, 6)}...` : 'MISSING');
+                
+                if (!apiKey) {
+                    throw new Error('Brevo API key is missing or empty. Please check your configuration.');
+                }
+                
+                // Create the headers object
+                const requestHeaders = {
+                    'accept': 'application/json',
+                    'api-key': apiKey,
+                    'content-type': 'application/json'
+                };
+                
+                console.log('Sending request to Brevo API...');
+                
+                const response = await fetch(brevoUrl, {
+                    method: 'POST',
+                    headers: requestHeaders,
+                    body: JSON.stringify(emailData)
+                });
+            
+                console.log('Brevo API response status:', response.status);
+                
+                // Log the response body for debugging
+                const responseText = await response.text();
+                console.log('Brevo API response body:', responseText);
+                
+                // If response is not ok, parse and throw error
+                if (!response.ok) {
+                    let errorData;
+                    try {
+                        errorData = JSON.parse(responseText);
+                        // Add more context to the error message
+                        if (response.status === 401) {
+                            errorData.suggestion = 'Please verify your Brevo API key is correct and has the necessary permissions.';
+                        }
+                    } catch (e) {
+                        errorData = { 
+                            message: responseText,
+                            suggestion: 'An unknown error occurred while processing the response.'
+                        };
+                    }
+                    const errorMessage = errorData.message || `HTTP error! status: ${response.status}`;
+                    throw new Error(errorMessage);
+                }
+                
+                // Parse success response
+                let responseData;
+                try {
+                    responseData = JSON.parse(responseText);
+                    console.log('Brevo API success response:', responseData);
+                } catch (e) {
+                    console.log('Could not parse response as JSON');
+                }
+                
+                console.log(`Email sent successfully to ${customerEmail}`);
                 return true;
             } catch (error) {
-                console.error("Email sending error:", error);
+                console.error('Error sending delivery email:', error);
                 throw error;
             }
         }
