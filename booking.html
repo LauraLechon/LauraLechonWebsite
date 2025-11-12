@@ -4,18 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Booking Form</title>
-    <!-- Cloudflare Challenge Platform -->
-    <script>
-    // Prevent Cloudflare challenge platform errors
-    if (window._cf_chl_opt) {
-        window._cf_chl_opt.cUpoi = 0; // Disable Cloudflare challenge
-    }
-    // Add a global error handler to catch any remaining errors
-    window.onerror = function(message, source, lineno, colno, error) {
-        console.error('Global error:', {message, source, lineno, colno, error});
-        return false; // Prevent the default browser error handler
-    };
-    </script>
     <!-- Using jsDelivr CDN for Font Awesome -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" integrity="sha384-3B6NwesSXE7YJlcLI9RpRqGf2p/EgVH8BgoKTaUrmKNDkHPStTQ3EyoYjCGXaOTS" crossorigin="anonymous">
     <link rel="icon" type="image/x-icon" href="images/logo.png">
@@ -236,7 +224,7 @@
         
         /* Modal Styles */
         .modal {
-            display: none; /* This will be changed to flex when shown */
+            display: none;
             position: fixed;
             top: 0;
             left: 0;
@@ -245,33 +233,8 @@
             background: rgba(0, 0, 0, 0.8);
             justify-content: center;
             align-items: center;
-            z-index: 9999; /* Increased z-index */
-            opacity: 0;
-            transition: opacity 0.3s ease;
+            z-index: 1000;
             overflow-y: auto;
-            pointer-events: auto; /* Ensure it can receive events */
-        }
-        
-        /* Make sure the modal is visible when shown */
-        .modal[style*="display: flex"],
-        .modal.modal-visible {
-            opacity: 1 !important;
-            display: flex !important;
-            visibility: visible !important;
-            pointer-events: auto !important;
-        }
-        
-        /* Ensure modal content is visible */
-        .modal.modal-visible .modal-content {
-            opacity: 1;
-            transform: translateY(0);
-        }
-        
-        /* Add a transition for smooth appearance */
-        .modal-content {
-            transition: all 0.3s ease;
-            transform: translateY(-20px);
-            opacity: 0;
         }
         
         .modal-content {
@@ -990,7 +953,7 @@
                 parseInt(document.getElementById('largeQty').value),
                 parseInt(document.getElementById('xlQty').value),
                 parseInt(document.getElementById('xxlQty').value),
-                parseInt(document.getElementById('xxxlQty').value)
+                parseInt(document.getElementById('xxxQty').value)
             ];
             
             return quantities.some(qty => qty > 0);
@@ -998,31 +961,21 @@
         
         // Main form validation
         function validateForm() {
-            console.log('Starting form validation...');
-            
-            const validations = {
-                name: validateName(),
-                contact: validateContact(),
-                email: validateEmail(),
-                date: validateDate(),
-                time: validateTime(),
-                address: validateAddress(),
-                quantities: validateQuantities()
-            };
-            
-            console.log('Validation results:', validations);
-            
-            const isValid = Object.values(validations).every(Boolean);
-            console.log('Form is valid:', isValid);
+            const isValid = (
+                validateName() &&
+                validateContact() &&
+                validateEmail() &&
+                validateDate() &&
+                validateTime() &&
+                validateAddress() &&
+                validateQuantities()
+            );
             
             if (isValid) {
-                console.log('Showing payment options modal...');
                 showPaymentOptionsModal();
             } else {
-                console.log('Form validation failed, scrolling to first error...');
                 scrollToFirstError();
-                if (!validations.quantities) {
-                    console.log('No quantities selected');
+                if (!validateQuantities()) {
                     alert('Please select at least one size to order.');
                 }
             }
@@ -1050,64 +1003,9 @@
             document.getElementById('confirmPaymentBtn').disabled = false;
         }
         
-        // Show payment options modal with production-safe debugging
+        // Show payment options modal
         function showPaymentOptionsModal() {
-            try {
-                // Debug output that works even if console is not available
-                try { console.log('showPaymentOptionsModal called'); } catch(e) {}
-                
-                const modal = document.getElementById('paymentOptionsModal');
-                
-                if (!modal) {
-                    try { console.error('Payment options modal element not found!'); } catch(e) {}
-                    // Show alert as fallback
-                    alert('Error: Could not load payment options. Please try again.');
-                    return;
-                }
-                
-                // Try multiple approaches to show the modal
-                function showModal() {
-                    // Approach 1: Direct style manipulation
-                    try {
-                        modal.style.display = 'flex';
-                        modal.style.opacity = '1';
-                        modal.style.visibility = 'visible';
-                        modal.style.zIndex = '9999';
-                        modal.classList.add('modal-visible');
-                        
-                        // Check if modal is visible
-                        const isVisible = window.getComputedStyle(modal).display === 'flex' && 
-                                       window.getComputedStyle(modal).visibility === 'visible';
-                        
-                        if (!isVisible) throw new Error('Modal not visible after style changes');
-                        
-                        // Scroll to top in case it's off-screen
-                        modal.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        
-                    } catch (e) {
-                        // Approach 2: If direct manipulation fails, try adding a class
-                        try {
-                            modal.className = 'modal modal-visible';
-                            modal.setAttribute('style', 'display: flex !important; opacity: 1 !important; visibility: visible !important; z-index: 9999 !important;');
-                        } catch (e2) {
-                            // Last resort: show an alert
-                            alert('Please select a payment option to continue.');
-                            return false;
-                        }
-                    }
-                    return true;
-                }
-                
-                // Try showing the modal with a fallback
-                if (!showModal()) {
-                    // If first attempt fails, try again after a short delay
-                    setTimeout(showModal, 100);
-                }
-            } catch (error) {
-                // Global error handler
-                console.error('Error in showPaymentOptionsModal:', error);
-                alert('An error occurred while loading payment options. Please try again.');
-            }
+            document.getElementById('paymentOptionsModal').style.display = 'flex';
         }
         
         // Close payment options modal
@@ -1328,97 +1226,6 @@
             if (event.target.classList.contains('modal')) {
                 event.target.style.display = 'none';
             }
-        });
-
-        // Debugging script for modal visibility
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM fully loaded');
-            
-            // Create debug button
-            const debugBtn = document.createElement('button');
-            debugBtn.textContent = 'Debug Modal';
-            debugBtn.style.position = 'fixed';
-            debugBtn.style.top = '10px';
-            debugBtn.style.right = '10px';
-            debugBtn.style.zIndex = '99999';
-            debugBtn.style.padding = '10px 20px';
-            debugBtn.style.backgroundColor = '#FFD700';
-            debugBtn.style.color = '#000';
-            debugBtn.style.border = 'none';
-            debugBtn.style.borderRadius = '5px';
-            debugBtn.style.cursor = 'pointer';
-            debugBtn.style.fontWeight = 'bold';
-            
-            debugBtn.onclick = function() {
-                console.log('--- DEBUG MODAL ---');
-                const modal = document.getElementById('paymentOptionsModal');
-                
-                if (!modal) {
-                    console.error('❌ Modal element not found!');
-                    alert('Error: Payment modal element not found in DOM');
-                    return;
-                }
-                
-                console.log('✅ Modal found in DOM');
-                
-                // Check visibility
-                const style = window.getComputedStyle(modal);
-                console.log('Modal styles:', {
-                    display: style.display,
-                    visibility: style.visibility,
-                    opacity: style.opacity,
-                    zIndex: style.zIndex,
-                    position: style.position
-                });
-                
-                // Check parent visibility
-                let parent = modal.parentElement;
-                let hiddenParent = null;
-                while (parent) {
-                    const parentStyle = window.getComputedStyle(parent);
-                    if (parentStyle.display === 'none' || 
-                        parentStyle.visibility === 'hidden' || 
-                        parentStyle.opacity === '0') {
-                        hiddenParent = parent;
-                        break;
-                    }
-                    parent = parent.parentElement;
-                }
-                
-                if (hiddenParent) {
-                    console.warn('⚠️ Hidden parent element found:', hiddenParent);
-                    console.log('Parent styles:', window.getComputedStyle(hiddenParent));
-                } else {
-                    console.log('✅ No hidden parent elements found');
-                }
-                
-                // Try to force show the modal
-                console.log('Attempting to show modal...');
-                modal.style.display = 'flex';
-                modal.style.visibility = 'visible';
-                modal.style.opacity = '1';
-                modal.style.zIndex = '9999';
-                
-                // Check if it worked
-                setTimeout(() => {
-                    const newStyle = window.getComputedStyle(modal);
-                    console.log('New modal styles:', {
-                        display: newStyle.display,
-                        visibility: newStyle.visibility,
-                        opacity: newStyle.opacity
-                    });
-                    
-                    if (newStyle.display === 'flex' && newStyle.visibility === 'visible') {
-                        console.log('✅ Modal should now be visible');
-                    } else {
-                        console.error('❌ Failed to show modal');
-                    }
-                }, 100);
-            };
-            
-            // Add debug button to page
-            document.body.appendChild(debugBtn);
-            console.log('Debug button added to page');
         });
     </script>
 <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'937d8ad52b678831',t:'MTc0NTkxNjUyNi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
