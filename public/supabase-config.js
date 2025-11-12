@@ -6,12 +6,8 @@
 const SUPABASE_URL = window.env?.VITE_SUPABASE_URL || 'https://bugccvyjkxevyfesivkb.supabase.co';
 const SUPABASE_KEY = window.env?.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1Z2Njdnlqa3hldnlmZXNpdmtiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU5NDI2OTIsImV4cCI6MjA2MTUxODY5Mn0.pr1GyDAKPIi4-1Jvym8DPG5AndOI5qYu44RbxeQuQ0Y';
 
-// Make Brevo API key available globally
-// Load from config file instead of hardcoding
-window.brevoConfig = {
-    apiKey: window.env?.VITE_BREVO_API_KEY || '',
-    apiUrl: 'https://api.brevo.com/v3/smtp/email'
-};
+// Note: Brevo API key is initialized in config.js
+// Do not initialize here to avoid conflicts
 
 // Wait for @supabase/supabase-js to load, then create client once
 (async function initSupabaseSafe() {
