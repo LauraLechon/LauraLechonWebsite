@@ -1,8 +1,10 @@
 import { defineConfig, loadEnv } from 'vite';
+import { resolve } from 'path';
 
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
   const env = loadEnv(mode, process.cwd(), '');
+  const rootDir = process.cwd();
   
   return {
     // This will expose all environment variables that start with VITE_ to your client-side code
@@ -25,7 +27,18 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: 'dist',
       assetsDir: 'assets',
-      sourcemap: true
+      sourcemap: true,
+      rollupOptions: {
+        input: {
+          main: resolve(rootDir, 'index.html'),
+          admin: resolve(rootDir, 'admin.html'),
+          adminLogin: resolve(rootDir, 'admin-login.html'),
+          booking: resolve(rootDir, 'booking.html'),
+          riderLogin: resolve(rootDir, 'rider-login.html'),
+          riderDashboard: resolve(rootDir, 'rider-dashboard.html'),
+          riderSignup: resolve(rootDir, 'rider-signup.html')
+        }
+      }
     }
   };
 });
