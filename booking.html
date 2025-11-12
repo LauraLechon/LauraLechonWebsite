@@ -224,7 +224,7 @@
         
         /* Modal Styles */
         .modal {
-            display: none;
+            display: none; /* This will be changed to flex when shown */
             position: fixed;
             top: 0;
             left: 0;
@@ -233,8 +233,33 @@
             background: rgba(0, 0, 0, 0.8);
             justify-content: center;
             align-items: center;
-            z-index: 1000;
+            z-index: 9999; /* Increased z-index */
+            opacity: 0;
+            transition: opacity 0.3s ease;
             overflow-y: auto;
+            pointer-events: auto; /* Ensure it can receive events */
+        }
+        
+        /* Make sure the modal is visible when shown */
+        .modal[style*="display: flex"],
+        .modal.modal-visible {
+            opacity: 1 !important;
+            display: flex !important;
+            visibility: visible !important;
+            pointer-events: auto !important;
+        }
+        
+        /* Ensure modal content is visible */
+        .modal.modal-visible .modal-content {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* Add a transition for smooth appearance */
+        .modal-content {
+            transition: all 0.3s ease;
+            transform: translateY(-20px);
+            opacity: 0;
         }
         
         .modal-content {
@@ -961,21 +986,31 @@
         
         // Main form validation
         function validateForm() {
-            const isValid = (
-                validateName() &&
-                validateContact() &&
-                validateEmail() &&
-                validateDate() &&
-                validateTime() &&
-                validateAddress() &&
-                validateQuantities()
-            );
+            console.log('Starting form validation...');
+            
+            const validations = {
+                name: validateName(),
+                contact: validateContact(),
+                email: validateEmail(),
+                date: validateDate(),
+                time: validateTime(),
+                address: validateAddress(),
+                quantities: validateQuantities()
+            };
+            
+            console.log('Validation results:', validations);
+            
+            const isValid = Object.values(validations).every(Boolean);
+            console.log('Form is valid:', isValid);
             
             if (isValid) {
+                console.log('Showing payment options modal...');
                 showPaymentOptionsModal();
             } else {
+                console.log('Form validation failed, scrolling to first error...');
                 scrollToFirstError();
-                if (!validateQuantities()) {
+                if (!validations.quantities) {
+                    console.log('No quantities selected');
                     alert('Please select at least one size to order.');
                 }
             }
@@ -1003,9 +1038,36 @@
             document.getElementById('confirmPaymentBtn').disabled = false;
         }
         
-        // Show payment options modal
+        // Show payment options modal with enhanced reliability
         function showPaymentOptionsModal() {
-            document.getElementById('paymentOptionsModal').style.display = 'flex';
+            console.log('showPaymentOptionsModal called');
+            const modal = document.getElementById('paymentOptionsModal');
+            
+            if (!modal) {
+                console.error('Payment options modal element not found!');
+                return;
+            }
+            
+            // Force a reflow/repaint
+            modal.style.display = 'none';
+            // Use requestAnimationFrame to ensure the DOM is ready
+            requestAnimationFrame(() => {
+                // Set inline styles to ensure they take precedence
+                Object.assign(modal.style, {
+                    display: 'flex',
+                    opacity: '1',
+                    visibility: 'visible',
+                    zIndex: '9999'
+                });
+                
+                console.log('Modal should be visible now');
+                
+                // Add a class to handle the transition
+                modal.classList.add('modal-visible');
+                
+                // Force a reflow to ensure the browser recognizes the display change
+                void modal.offsetHeight;
+            });
         }
         
         // Close payment options modal
