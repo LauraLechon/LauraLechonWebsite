@@ -7,72 +7,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Load Supabase first, then our config, then the rest of the app -->
+    <!-- Load Supabase and configuration -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js"></script>
-    <!-- Load configuration -->
+    <script src="config.js"></script>
+    
+    <!-- Initialize the app -->
     <script>
-        // Initialize brevoConfig if it doesn't exist
-        window.brevoConfig = window.brevoConfig || {};
-        
-        // Set default API URL
-        window.brevoConfig.apiUrl = 'https://api.brevo.com/v3/smtp/email';
-        
-        // Check for production environment (Vercel sets this)
-        const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-        
-        // Function to check if file exists
-        function fileExists(url) {
-            try {
-                const http = new XMLHttpRequest();
-                http.open('HEAD', url, false);
-                http.send();
-                return http.status !== 404;
-            } catch (e) {
-                console.warn('Error checking file:', e);
-                return false;
-            }
-        }
-        
-        // Function to load configuration
-        function loadConfig() {
-            console.log('Running in', isProduction ? 'production' : 'development', 'environment');
-            
-            // Check for environment variables in window.ENV
-            if (window.ENV && window.ENV.VITE_BREVO_API_KEY) {
-                window.brevoConfig.apiKey = window.ENV.VITE_BREVO_API_KEY;
-                console.log('Loaded Brevo API key from window.ENV');
-            } 
-            // In development, try to load from config.local.js
-            else if (!isProduction) {
-                console.log('Running in development environment');
-                if (fileExists('config.local.js')) {
-                    console.log('Loading local configuration');
-                    document.write('<script src="config.local.js?t=' + new Date().getTime() + '"><\/script>');
-                    return; // Exit early, the config will be processed when the script loads
-                } else {
-                    console.warn('No local configuration found (config.local.js)');
-                }
-            }
-            
-            // Ensure we have the latest config values
-            window.brevoConfig.apiUrl = window.brevoConfig.apiUrl || 'https://api.brevo.com/v3/smtp/email';
-            
-            // Mark as configured
-            window.brevoConfig.isConfigured = true;
-            
-            // Log configuration status
-            console.log('Brevo Config:', {
-                apiUrl: window.brevoConfig.apiUrl,
-                hasApiKey: !!window.brevoConfig.apiKey,
-                apiKeyPrefix: window.brevoConfig.apiKey ? 
-                    (window.brevoConfig.apiKey.substring(0, 6) + '...') : 'Not set',
-                source: 'loadConfig function'
-            });
-        }
-        
-        // Load configuration
-        loadConfig();
-        
         // Initialize the app after config is loaded
         document.addEventListener('DOMContentLoaded', function() {
             // Small delay to ensure config is loaded
@@ -80,45 +21,30 @@
                 // Log configuration status
                 if (window.brevoConfig && window.brevoConfig.apiKey) {
                     console.log('Brevo API key is configured');
-                    // Ensure we have the latest config values
-                    window.brevoConfig.apiUrl = window.brevoConfig.apiUrl || 'https://api.brevo.com/v3/smtp/email';
-                    
                     // Log the configuration (without exposing the full key)
                     console.log('Brevo Config:', {
                         apiUrl: window.brevoConfig.apiUrl,
-                        hasApiKey: !!window.brevoConfig.apiKey,
-                        apiKeyPrefix: window.brevoConfig.apiKey ? window.brevoConfig.apiKey.substring(0, 6) + '...' : 'Not set'
+                        hasApiKey: true,
+                        apiKeyPrefix: window.brevoConfig.apiKey ? 
+                            window.brevoConfig.apiKey.substring(0, 6) + '...' : 'Not set'
                     });
+                    
+                    // Initialize the app if available
+                    if (typeof initializeApp === 'function') {
+                        initializeApp();
+                    }
                 } else {
                     console.warn('Brevo API key is not configured. Email functionality will be disabled.');
                     console.log('Current brevoConfig:', window.brevoConfig);
+                    
+                    // Still try to initialize the app without email functionality
+                    if (typeof initializeApp === 'function') {
+                        initializeApp();
+                    }
                 }
-                
-                if (window.supabase && typeof initializeApp === 'function') {
-                    initializeApp();
-                } else {
-                    console.error('Supabase client not properly initialized');
-                }
-            }, 100); // Small delay to ensure any dynamically loaded configs are available
+            }, 100);
         });
     </script>
-    <!-- Load environment variables first -->
-    <script src="/env.js"></script>
-    
-    <!-- Initialize configuration -->
-    <script>
-        window.brevoConfig = {
-            apiUrl: 'https://api.brevo.com/v3/smtp/email',
-            apiKey: window.VITE_BREVO_API_KEY || null,
-            isConfigured: false
-        };
-        
-        // For local development, you can uncomment and set your API key here
-        // window.brevoConfig.apiKey = 'your_brevo_api_key_here';
-    </script>
-    
-    <!-- Load config.js -->
-    <script src="config.js"></script>
     
     <!-- Load other resources -->
     <link rel="icon" type="image/x-icon" href="adminlogo.png">
