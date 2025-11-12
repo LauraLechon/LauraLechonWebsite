@@ -4,9 +4,9 @@ import { resolve } from 'path';
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
   const env = loadEnv(mode, process.cwd(), '');
-  const rootDir = process.cwd();
   
   return {
+    root: '.',
     // This will expose all environment variables that start with VITE_ to your client-side code
     define: {
       // For Vite's import.meta.env
@@ -30,13 +30,13 @@ export default defineConfig(({ mode }) => {
       sourcemap: true,
       rollupOptions: {
         input: {
-          main: resolve(rootDir, 'index.html'),
-          admin: resolve(rootDir, 'admin.html'),
-          adminLogin: resolve(rootDir, 'admin-login.html'),
-          booking: resolve(rootDir, 'booking.html'),
-          riderLogin: resolve(rootDir, 'rider-login.html'),
-          riderDashboard: resolve(rootDir, 'rider-dashboard.html'),
-          riderSignup: resolve(rootDir, 'rider-signup.html')
+          main: resolve(__dirname, 'index.html'),
+          admin: resolve(__dirname, 'admin.html'),
+          adminLogin: resolve(__dirname, 'admin-login.html'),
+          booking: resolve(__dirname, 'booking.html'),
+          riderLogin: resolve(__dirname, 'rider-login.html'),
+          riderDashboard: resolve(__dirname, 'rider-dashboard.html'),
+          riderSignup: resolve(__dirname, 'rider-signup.html')
         },
         output: {
           entryFileNames: '[name].js',
