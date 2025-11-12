@@ -807,46 +807,40 @@
             document.getElementById('time').addEventListener('change', validateTime);
             document.getElementById('deliveryAddress').addEventListener('input', validateAddress);
             
-            // Proceed button click handler
-            // Wait for DOM to be fully loaded
-            document.addEventListener('DOMContentLoaded', function() {
-                // Proceed button
-                const proceedBtn = document.getElementById('proceedBtn');
-                if (proceedBtn) {
-                    proceedBtn.addEventListener('click', validateForm);
-                }
-                
-                // Confirm payment button
-                const confirmPaymentBtn = document.getElementById('confirmPaymentBtn');
-                if (confirmPaymentBtn) {
-                    confirmPaymentBtn.addEventListener('click', showOrderSummary);
-                }
-                
-                // Place order button
-                const placeOrderBtn = document.getElementById('placeOrderBtn');
-                if (placeOrderBtn) {
-                    placeOrderBtn.addEventListener('click', placeOrder);
-                }
-                
-                // Image upload preview
-                const uploadImage = document.getElementById('uploadImage');
-                if (uploadImage) {
-                    uploadImage.addEventListener('change', function(e) {
-                        const file = e.target.files[0];
-                        if (file) {
-                            const reader = new FileReader();
-                            reader.onload = function(event) {
-                                const preview = document.getElementById('uploadedImagePreview');
-                                const error = document.getElementById('uploadImageError');
-                                if (preview) preview.src = event.target.result;
-                                if (preview) preview.style.display = 'block';
-                                if (error) error.style.display = 'none';
-                            };
-                            reader.readAsDataURL(file);
-                        }
-                    });
-                }
-            });
+            // Button event listeners
+            const proceedBtn = document.getElementById('proceedBtn');
+            if (proceedBtn) {
+                proceedBtn.addEventListener('click', validateForm);
+            }
+            
+            const confirmPaymentBtn = document.getElementById('confirmPaymentBtn');
+            if (confirmPaymentBtn) {
+                confirmPaymentBtn.addEventListener('click', showOrderSummary);
+            }
+            
+            const placeOrderBtn = document.getElementById('placeOrderBtn');
+            if (placeOrderBtn) {
+                placeOrderBtn.addEventListener('click', placeOrder);
+            }
+            
+            // Image upload preview
+            const uploadImage = document.getElementById('uploadImage');
+            if (uploadImage) {
+                uploadImage.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            const preview = document.getElementById('uploadedImagePreview');
+                            const error = document.getElementById('uploadImageError');
+                            if (preview) preview.src = event.target.result;
+                            if (preview) preview.style.display = 'block';
+                            if (error) error.style.display = 'none';
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+            }
             
             // Highlight selected size boxes when quantity > 0
             document.querySelectorAll('.size-qty').forEach(input => {
