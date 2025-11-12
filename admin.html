@@ -24,9 +24,11 @@
                     // Log the configuration (without exposing the full key)
                     console.log('Brevo Config:', {
                         apiUrl: window.brevoConfig.apiUrl,
-                        hasApiKey: true,
+                        hasApiKey: !!window.brevoConfig.apiKey,
                         apiKeyPrefix: window.brevoConfig.apiKey ? 
-                            window.brevoConfig.apiKey.substring(0, 6) + '...' : 'Not set'
+                            window.brevoConfig.apiKey.substring(0, 6) + '...' : 'Not set',
+                        source: 'config.js',
+                        isConfigured: window.brevoConfig.isConfigured
                     });
                     
                     // Initialize the app if available
@@ -5369,8 +5371,10 @@
                 
                 // Ensure the API key is properly trimmed and validated
                 const apiKey = (brevoApiKey || '').trim();
+                console.log('Using Brevo API key:', apiKey ? `${apiKey.substring(0, 6)}...` : 'MISSING');
+                
                 if (!apiKey) {
-                    throw new Error('Brevo API key is missing or empty');
+                    throw new Error('Brevo API key is missing or empty. Please check your configuration.');
                 }
                 
                 try {
@@ -5395,8 +5399,15 @@
                         let errorData;
                         try {
                             errorData = JSON.parse(responseText);
+                            // Add more context to the error message
+                            if (response.status === 401) {
+                                errorData.suggestion = 'Please verify your Brevo API key is correct and has the necessary permissions.';
+                            }
                         } catch (e) {
-                            errorData = { message: responseText };
+                            errorData = { 
+                                message: responseText,
+                                suggestion: 'An unknown error occurred while processing the response.'
+                            };
                         }
                         const errorMessage = errorData.message || `HTTP error! status: ${response.status}`;
                         throw new Error(errorMessage);
