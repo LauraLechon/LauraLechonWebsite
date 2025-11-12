@@ -11,33 +11,42 @@
         isConfigured: false
     };
 
-    // Check for Vite environment variables (works in Vercel)
-    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BREVO_API_KEY) {
-        window.brevoConfig.apiKey = import.meta.env.VITE_BREVO_API_KEY;
+    // Check for Vite environment variables in globalThis (Vercel)
+    if (typeof globalThis !== 'undefined' && globalThis.process && globalThis.process.env && globalThis.process.env.VITE_BREVO_API_KEY) {
+        window.brevoConfig.apiKey = globalThis.process.env.VITE_BREVO_API_KEY;
         window.brevoConfig.isConfigured = true;
-        console.log('Loaded Brevo API key from Vite environment variables');
+        console.log('Loaded Brevo API key from Vercel environment variables');
     }
-    // Fallback to window variables (for non-module scripts)
+    // Check for environment variable in window.ENV (Vercel client-side)
     else if (window.ENV && window.ENV.VITE_BREVO_API_KEY) {
         window.brevoConfig.apiKey = window.ENV.VITE_BREVO_API_KEY;
         window.brevoConfig.isConfigured = true;
         console.log('Loaded Brevo API key from window.ENV');
     }
-    // Direct window variable (for Vercel server-side)
+    // Check for direct window variable (for direct script injection)
     else if (window.VITE_BREVO_API_KEY) {
         window.brevoConfig.apiKey = window.VITE_BREVO_API_KEY;
+        window.brevoConfig.isConfigured = true;
         console.log('Loaded Brevo API key from window.VITE_BREVO_API_KEY');
     }
-
-    // Mark as configured
-    window.brevoConfig.isConfigured = true;
+    // Check URL parameters (for testing)
+    else {
+        const urlParams = new URLSearchParams(window.location.search);
+        const apiKey = urlParams.get('brevo_api_key');
+        if (apiKey) {
+            window.brevoConfig.apiKey = apiKey;
+            window.brevoConfig.isConfigured = true;
+            console.log('Loaded Brevo API key from URL parameter (for testing only)');
+        }
+    }
 
     // Log the configuration (without exposing the full key)
     console.log('Brevo Config:', {
         apiUrl: window.brevoConfig.apiUrl,
         hasApiKey: !!window.brevoConfig.apiKey,
         apiKeyPrefix: window.brevoConfig.apiKey ? 
-            (String(window.brevoConfig.apiKey).substring(0, 6) + '...') : 'Not set',
-        source: window.brevoConfig.apiKey ? 'environment' : 'default'
+            (window.brevoConfig.apiKey.substring(0, 6) + '...') : 'Not set',
+        source: 'config.js',
+        isConfigured: window.brevoConfig.isConfigured
     });
 })();
