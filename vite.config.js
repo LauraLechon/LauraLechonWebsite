@@ -37,6 +37,11 @@ export default defineConfig(({ mode }) => {
           riderLogin: resolve(rootDir, 'rider-login.html'),
           riderDashboard: resolve(rootDir, 'rider-dashboard.html'),
           riderSignup: resolve(rootDir, 'rider-signup.html')
+        },
+        output: {
+          entryFileNames: '[name].js',
+          chunkFileNames: '[name].js',
+          assetFileNames: '[name].[ext]'
         }
       }
     }
