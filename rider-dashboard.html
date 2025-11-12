@@ -14,29 +14,59 @@
     <!-- Then load our config that initializes the client -->
     <script src="supabase-config.js"></script>
     
-    <!-- Add a script to ensure config is loaded -->
     <script>
+        // Global variable to store the current rider's information
+        let currentRider = null;
+        let isBrevoConfigured = false;
+        
+        // Function to initialize the application after config is loaded
+        function initApp() {
+            console.log('Initializing application with Brevo config:', {
+                hasApiKey: !!window.brevoConfig?.apiKey,
+                isConfigured: window.brevoConfig?.isConfigured,
+                source: 'rider-dashboard.html initApp'
+            });
+            
+            // Set the global flag
+            isBrevoConfigured = window.brevoConfig?.isConfigured === true;
+            
+            if (!isBrevoConfigured) {
+                console.warn('Brevo API key is not configured. Email functionality will be disabled.');
+            } else {
+                console.log('Brevo API is properly configured and ready to use');
+            }
+            
+            // Initialize the rest of your application here
+            // ...
+        }
+        
         // Wait for the config to be loaded
-        function waitForConfig(callback, maxAttempts = 10, attempt = 0) {
+        function waitForConfig(callback, maxAttempts = 20, attempt = 0) {
             if (window.brevoConfig && window.brevoConfig.isConfigured) {
                 console.log('Brevo config loaded successfully:', {
                     hasApiKey: !!window.brevoConfig.apiKey,
                     apiKeyPrefix: window.brevoConfig.apiKey ? 
                         (window.brevoConfig.apiKey.substring(0, 6) + '...') : 'Not set',
-                    source: 'rider-dashboard.html'
+                    source: 'rider-dashboard.html',
+                    attempt: attempt + 1
                 });
                 callback();
             } else if (attempt < maxAttempts) {
                 setTimeout(() => waitForConfig(callback, maxAttempts, attempt + 1), 100);
             } else {
                 console.error('Failed to load Brevo config after', maxAttempts, 'attempts');
+                // Still try to initialize the app even if Brevo config fails
+                callback();
             }
         }
+        
+        // Start waiting for config when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM fully loaded, waiting for Brevo config...');
+            waitForConfig(initApp);
+        });
     </script>
     <script>
-        // Global variable to store the current rider's information
-        let currentRider = null;
-        
         // Helper function to get the Supabase client
         function getSupabase() {
             if (!window.supabase) {
@@ -2100,20 +2130,26 @@
                     throw new Error(errorMsg);
                 }
                 
-                // Ensure Brevo config is loaded
-                if (!window.brevoConfig || !window.brevoConfig.isConfigured) {
-                    console.error('Brevo configuration not properly initialized');
-                    console.log('Current brevoConfig:', window.brevoConfig);
-                    throw new Error('Email service is not properly configured. Please try again later.');
+                // Check if Brevo is configured
+                if (!isBrevoConfigured) {
+                    const errorMsg = 'Email service is not properly configured. Please check your Brevo API key configuration.';
+                    console.error(errorMsg);
+                    throw new Error(errorMsg);
                 }
                 
-                const brevoConfig = window.brevoConfig;
+                const brevoConfig = window.brevoConfig || {};
                 const brevoUrl = brevoConfig.apiUrl || 'https://api.brevo.com/v3/smtp/email';
                 const brevoApiKey = brevoConfig.apiKey || '';
                 
                 console.log('Using Brevo API key:', brevoApiKey ? '*** (key exists)' : 'MISSING');
                 
                 if (!brevoApiKey) {
+                    console.error('Brevo API key is missing in the configuration');
+                    console.log('Current brevoConfig:', {
+                        hasApiKey: !!brevoConfig.apiKey,
+                        isConfigured: brevoConfig.isConfigured,
+                        apiUrl: brevoConfig.apiUrl
+                    });
                     const errorMsg = 'Brevo API key is not properly configured. Please check your configuration.';
                     console.error(errorMsg);
                     throw new Error(errorMsg);
