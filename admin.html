@@ -4231,7 +4231,19 @@
 
                 console.log('Successfully inserted into order_history:', insertedData);
 
-                // Only delete from orders if history insert was successful
+                // First, delete any related delivery history records
+                console.log('Deleting related delivery history for order:', orderId);
+                const { error: deleteHistoryError } = await supabase
+                    .from('delivery_history')
+                    .delete()
+                    .eq('order_id', orderId);
+
+                if (deleteHistoryError && !deleteHistoryError.message.includes('No rows deleted')) {
+                    console.error('Error deleting delivery history:', deleteHistoryError);
+                    throw new Error(`Failed to delete delivery history: ${deleteHistoryError.message}`);
+                }
+
+                // Now delete from orders
                 console.log('Attempting to delete order from orders table:', orderId);
                 const { error: deleteError } = await supabase
                     .from('orders')
