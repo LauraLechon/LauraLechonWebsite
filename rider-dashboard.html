@@ -7,8 +7,32 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <!-- Load Supabase SDK first -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Load configuration first -->
+    <script src="config.js"></script>
+    
     <!-- Then load our config that initializes the client -->
     <script src="supabase-config.js"></script>
+    
+    <!-- Add a script to ensure config is loaded -->
+    <script>
+        // Wait for the config to be loaded
+        function waitForConfig(callback, maxAttempts = 10, attempt = 0) {
+            if (window.brevoConfig && window.brevoConfig.isConfigured) {
+                console.log('Brevo config loaded successfully:', {
+                    hasApiKey: !!window.brevoConfig.apiKey,
+                    apiKeyPrefix: window.brevoConfig.apiKey ? 
+                        (window.brevoConfig.apiKey.substring(0, 6) + '...') : 'Not set',
+                    source: 'rider-dashboard.html'
+                });
+                callback();
+            } else if (attempt < maxAttempts) {
+                setTimeout(() => waitForConfig(callback, maxAttempts, attempt + 1), 100);
+            } else {
+                console.error('Failed to load Brevo config after', maxAttempts, 'attempts');
+            }
+        }
+    </script>
     <script>
         // Global variable to store the current rider's information
         let currentRider = null;
@@ -2076,8 +2100,14 @@
                     throw new Error(errorMsg);
                 }
                 
-                // Get Brevo configuration from global config
-                const brevoConfig = window.brevoConfig || {};
+                // Ensure Brevo config is loaded
+                if (!window.brevoConfig || !window.brevoConfig.isConfigured) {
+                    console.error('Brevo configuration not properly initialized');
+                    console.log('Current brevoConfig:', window.brevoConfig);
+                    throw new Error('Email service is not properly configured. Please try again later.');
+                }
+                
+                const brevoConfig = window.brevoConfig;
                 const brevoUrl = brevoConfig.apiUrl || 'https://api.brevo.com/v3/smtp/email';
                 const brevoApiKey = brevoConfig.apiKey || '';
                 
