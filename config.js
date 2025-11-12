@@ -1,5 +1,5 @@
 // config.js - Configuration loader for Vite/Vercel environment
-function() {
+(function() {
     'use strict';
 
     console.log('Config loader initialized');
