@@ -27,8 +27,9 @@
                         hasApiKey: !!window.brevoConfig.apiKey,
                         apiKeyPrefix: window.brevoConfig.apiKey ? 
                             window.brevoConfig.apiKey.substring(0, 6) + '...' : 'Not set',
-                        source: 'config.js',
-                        isConfigured: window.brevoConfig.isConfigured
+                        source: 'admin.html',
+                        isConfigured: window.brevoConfig.isConfigured,
+                        keyLength: window.brevoConfig.apiKey ? window.brevoConfig.apiKey.length : 0
                     });
                     
                     // Initialize the app if available
@@ -5378,6 +5379,9 @@
                 }
                 
                 try {
+                    // Create a new object without the headers property from emailData
+                    const { headers, ...requestData } = emailData;
+                    
                     const response = await fetch(brevoUrl, {
                         method: 'POST',
                         headers: {
@@ -5385,7 +5389,7 @@
                             'api-key': apiKey,
                             'content-type': 'application/json'
                         },
-                        body: JSON.stringify(emailData)
+                        body: JSON.stringify(requestData)  // Send requestData without headers
                     });
                 
                     console.log('Brevo API response status:', response.status);
