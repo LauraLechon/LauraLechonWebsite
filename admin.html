@@ -4988,15 +4988,10 @@
 
                 console.log('Table access successful, fetching order history...');
                 
-                // Get all delivery history data
+                // Get all order history data
                 const { data: orders, error } = await supabase
-                    .from('delivery_history')
-                    .select(`
-                        *,
-                        rider:rider_id (
-                            name
-                        )
-                    `)
+                    .from('order_history')
+                    .select('*')
                     .order('created_at', { ascending: false });
 
                 if (error) {
@@ -5026,9 +5021,10 @@
                 // Prepare CSV rows with null/undefined checks
                 const rows = (orders || []).map(order => {
                     try {
-                        // Safely get rider name
-                        const riderName = (order.rider && order.rider.name) ? 
-                            order.rider.name : 'Not assigned';
+                        // Safely get rider name (rider_name is now a direct field in order_history)
+                        const riderName = order.rider_name || 
+                                       (order.rider_id ? `Rider ${order.rider_id}` : 
+                                       (order.assigned_rider_id ? `Rider ${order.assigned_rider_id}` : 'Not assigned'));
                         
                         // Safely format date
                         let formattedDate = '';
