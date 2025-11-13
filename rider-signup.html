@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rider Signup - Laura Lechon</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="icon" type="image/x-icon" href="images/adminlogo.png">
+    <link rel="icon" type="image/x-icon" href="adminlogo.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Load Supabase SDK first -->
@@ -247,7 +247,7 @@
 </head>
 <body>
     <div class="signup-container">
-        <img src="images/adminlogo.png" alt="Laura Lechon Logo" class="logo">
+        <img src="adminlogo.png" alt="Laura Lechon Logo" class="logo">
         <h1>Rider Signup</h1>
         
         <div class="container">
@@ -514,7 +514,7 @@
                         p_contact: contact,
                         p_vehicle_type: vehicleType,
                         p_plate_number: plateNumber,
-                        p_status: 'Pending',
+                        p_status: 'Active',
                         p_auth_user_id: authUser.id
                     });
 
@@ -537,16 +537,15 @@
                 // Show success message
                 Swal.fire({
                     icon: 'success',
-                    title: 'Registration Successful!',
+                    title: 'Rider Created Successfully!',
                     html: `
-                        <p>Your account has been created successfully.</p>
-                        <p><strong>Please wait for admin approval before logging in.</strong></p>
-                        <p>You will receive an email notification once your account is approved.</p>
+                        <p>The rider account has been created and is now active.</p>
                     `,
-                    confirmButtonText: 'Go to Login',
-                    confirmButtonColor: '#1d3a6b'
+                    confirmButtonText: 'Return to Admin',
+                    confirmButtonColor: '#1d3a6b',
+                    allowOutsideClick: false
                 }).then(() => {
-                    window.location.href = 'rider-login.html';
+                    window.close();
                 });
                 
                 // Reset form
