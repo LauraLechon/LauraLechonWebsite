@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rider Signup - Laura Lechon</title>
+    <title>Add New Rider - Laura Lechon</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
     <link rel="icon" type="image/x-icon" href="adminlogo.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -12,6 +12,14 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Then load our config that initializes the client -->
     <script src="supabase-config.js"></script>
+    <script>
+        // Close the modal when clicking outside the content
+        document.addEventListener('click', function(event) {
+            if (event.target.classList.contains('modal')) {
+                window.parent.postMessage({ type: 'CLOSE_RIDER_SIGNUP' }, '*');
+            }
+        });
+    </script>
     <style>
         :root {
             --primary-color: #1d3a6b;
@@ -41,7 +49,25 @@
             width: 100%;
             max-width: 450px;
             text-align: center;
-            margin: 1rem;
+            margin: 0;
+            position: relative;
+        }
+        
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 1.8rem;
+            cursor: pointer;
+            color: #666;
+            padding: 0 10px;
+            line-height: 1;
+        }
+        
+        .close-btn:hover {
+            color: #333;
         }
         
         .logo {
@@ -247,8 +273,9 @@
 </head>
 <body>
     <div class="signup-container">
+        <button class="close-btn" id="closeBtn">&times;</button>
         <img src="adminlogo.png" alt="Laura Lechon Logo" class="logo">
-        <h1>Rider Signup</h1>
+        <h1>Add New Rider</h1>
         
         <div class="container">
             <form id="signupForm" onsubmit="signup(event)">
@@ -317,7 +344,7 @@
         notificationContainer.className = 'notification-container';
         document.body.appendChild(notificationContainer);
 
-        // Wait for Supabase to be initialized
+        // Wait for Supabase to be initialized and check admin status
         document.addEventListener('DOMContentLoaded', async () => {
             try {
                 // Wait for Supabase to be initialized (with a timeout)
@@ -335,26 +362,49 @@
 
                 await waitForSupabase();
                 
-                // Check if user is already logged in
+                // Check if user is an admin
                 const { data: { session }, error } = await window.supabase.auth.getSession();
                 
                 if (error) {
                     console.error('Session check error:', error);
-                    showNotification('Error checking session. Please refresh the page.', 'error');
+                    showNotification('Error checking admin status. Please refresh the page.', 'error');
                     return;
                 }
 
-                if (session) {
-                    console.log('Active session found, redirecting to dashboard...');
-                    window.location.href = 'rider-dashboard.html';
+                if (!session) {
+                    showNotification('You must be logged in as an admin to add riders.', 'error');
+                    setTimeout(() => {
+                        window.parent.postMessage({ type: 'CLOSE_RIDER_SIGNUP' }, '*');
+                    }, 2000);
                     return;
                 }
 
-                console.log('No active session, showing signup form');
+                // Check if user is admin
+                const { data: userData, error: userError } = await window.supabase
+                    .from('profiles')
+                    .select('is_admin')
+                    .eq('id', session.user.id)
+                    .single();
+
+                if (userError || !userData || !userData.is_admin) {
+                    showNotification('Only administrators can add new riders.', 'error');
+                    setTimeout(() => {
+                        window.parent.postMessage({ type: 'CLOSE_RIDER_SIGNUP' }, '*');
+                    }, 2000);
+                    return;
+                }
+                
+                // Add close button event listener
+                document.getElementById('closeBtn').addEventListener('click', () => {
+                    window.parent.postMessage({ type: 'CLOSE_RIDER_SIGNUP' }, '*');
+                });
                 
             } catch (err) {
                 console.error('Error during initialization:', err);
                 showNotification('Failed to initialize. Please refresh the page.', 'error');
+                setTimeout(() => {
+                    window.parent.postMessage({ type: 'CLOSE_RIDER_SIGNUP' }, '*');
+                }, 2000);
             }
         });
 
