@@ -4660,15 +4660,9 @@
                         <td>${rider.plate_number || 'N/A'}</td>
                         <td><span class="rider-status ${statusClass}">${rider.status || 'N/A'}</span></td>
                         <td>
-                            ${rider.status === 'Pending' ? `
-                                <button class="action-btn btn-confirm" onclick="showRiderVerificationModal(${JSON.stringify(rider).replace(/"/g, '&quot;')}); return false;">
-                                    <i class="fas fa-check"></i> Verify
-                                </button>
-                            ` : `
-                                <button class="action-btn btn-delete" onclick="deleteRider('${rider.id}'); return false;">
-                                    <i class="fas fa-trash"></i> Delete
-                                </button>
-                            `}
+                            <button class="action-btn btn-delete" onclick="deleteRider('${rider.id}'); return false;">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
                         </td>
                     `;
                     ridersTable.appendChild(row);
