@@ -2464,10 +2464,7 @@
 
                 document.getElementById('selectedMonthTotal').textContent = `₱${selectedMonthTotal.toLocaleString()}`;
                 
-                // Only update the chart if it's the initial load (no data yet)
-                if (salesChart && !lastChartData) {
-                    updateMonthlySalesChart(monthlySales);
-                }
+                // Let calculateDashboardData handle the chart updates
             } catch (error) {
                 console.error('Error updating monthly total:', error);
                 document.getElementById('selectedMonthTotal').textContent = '₱0';
@@ -3147,15 +3144,26 @@
                 const additionalInfo = modal.querySelector('#denyAdditionalInfo').value.trim();
                 await processOrderDenial(order, reason, additionalInfo);
                 modal.remove();
-            });
-            
-            // Close modal when clicking outside
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    modal.remove();
-                    // Refresh the order list when modal is closed without confirming
-                    renderOrderList();
-                }
+                
+                // Event listener for tab changes to update dashboard when switching to it
+                document.querySelectorAll('.nav-link').forEach(tab => {
+                    tab.addEventListener('click', function() {
+                        if (this.getAttribute('href') === '#dashboard') {
+                            // Reset chart data flag to ensure fresh data is loaded
+                            lastChartData = null;
+                            calculateDashboardData();
+                        }
+                    });
+                });
+                
+                // Close modal when clicking outside
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        modal.remove();
+                        // Refresh the order list when modal is closed without confirming
+                        renderOrderList();
+                    }
+                });
             });
         }
         
