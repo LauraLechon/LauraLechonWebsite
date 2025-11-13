@@ -946,6 +946,80 @@
             font-weight: 500;
         }
         
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            margin-left: auto;
+        }
+        
+        .refresh-btn {
+            background: #f0f4f8;
+            border: none;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #1d3a6b;
+            transition: all 0.3s ease;
+        }
+        
+        .refresh-btn:hover {
+            background: #e1e8f0;
+            transform: rotate(180deg);
+        }
+        
+        .add-rider-btn {
+            background: #1d3a6b;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 8px 16px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s ease;
+        }
+        
+        .add-rider-btn:hover {
+            background: #152a4a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .add-rider-btn i {
+            font-size: 0.9em;
+        }
+        
+        /* Rider Signup Modal */
+        .rider-signup-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .rider-signup-modal iframe {
+            width: 90%;
+            max-width: 500px;
+            height: 90%;
+            max-height: 800px;
+            background: white;
+            border-radius: 10px;
+            border: none;
+            box-shadow: 0 5px 30px rgba(0, 0, 0, 0.3);
+        }
+        
         .rider-status {
             padding: 5px 10px;
             border-radius: 20px;
@@ -1939,9 +2013,14 @@
                     <span class="tab-stat" id="totalRiders">Total Riders: 0</span>
                     <span class="tab-stat" id="availableRiders">Available: 0</span>
                     <span class="tab-stat" id="onDeliveryRiders">On Delivery: 0</span>
-                    <button onclick="window.open('rider-signup.html', '_blank', 'width=600,height=800')" class="add-rider-btn">
-                        <i class="fas fa-plus"></i> Add Rider
-                    </button>
+                    <div class="header-actions">
+                        <button id="refreshRidersBtn" class="refresh-btn" title="Refresh Riders">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                        <button id="addRiderBtn" class="add-rider-btn">
+                            <i class="fas fa-plus"></i> Add Rider
+                        </button>
+                    </div>
                 </div>
             </div>
             <div class="table-container">
@@ -2073,40 +2152,9 @@
     <!-- Add this before the closing </body> tag -->
     <div class="notification-container" id="notificationContainer"></div>
 
-    <!-- Add Rider Verification Modal -->
-    <div id="riderVerificationModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">New Rider Verification</h3>
-                <button class="close-btn" onclick="closeRiderVerificationModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>Name</label>
-                    <p id="verificationName"></p>
-                </div>
-                <div class="form-group">
-                    <label>Email</label>
-                    <p id="verificationEmail"></p>
-                </div>
-                <div class="form-group">
-                    <label>Contact</label>
-                    <p id="verificationContact"></p>
-                </div>
-                <div class="form-group">
-                    <label>Vehicle Type</label>
-                    <p id="verificationVehicle"></p>
-                </div>
-                <div class="form-group">
-                    <label>Plate Number</label>
-                    <p id="verificationPlate"></p>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="modal-btn cancel" onclick="denyRider()">Deny</button>
-                <button class="modal-btn save" onclick="acceptRider()">Accept</button>
-            </div>
-        </div>
+    <!-- Rider Signup Modal -->
+    <div id="riderSignupModal" class="rider-signup-modal">
+        <iframe id="riderSignupIframe" src="about:blank"></iframe>
     </div>
 
     <script>
@@ -2395,8 +2443,72 @@
             }
         }
 
+        // Function to open rider signup modal
+        function openRiderSignup() {
+            const modal = document.getElementById('riderSignupModal');
+            const iframe = document.getElementById('riderSignupIframe');
+            
+            // Set the iframe source to the rider signup page
+            iframe.src = 'rider-signup.html';
+            
+            // Show the modal
+            modal.style.display = 'flex';
+            
+            // Listen for messages from the iframe
+            const messageHandler = function(event) {
+                if (event.data.type === 'CLOSE_RIDER_SIGNUP') {
+                    // Close the modal
+                    modal.style.display = 'none';
+                    iframe.src = 'about:blank';
+                    
+                    // Refresh the riders list
+                    renderRiders();
+                    
+                    // Remove the event listener
+                    window.removeEventListener('message', messageHandler);
+                }
+            };
+            
+            // Add event listener for messages from the iframe
+            window.addEventListener('message', messageHandler);
+        }
+        
+        // Function to close rider signup modal
+        function closeRiderSignup() {
+            const modal = document.getElementById('riderSignupModal');
+            const iframe = document.getElementById('riderSignupIframe');
+            
+            modal.style.display = 'none';
+            iframe.src = 'about:blank';
+        }
+        
         // Setup event listeners
         function setupEventListeners() {
+            // Add Rider button click handler
+            const addRiderBtn = document.getElementById('addRiderBtn');
+            if (addRiderBtn) {
+                addRiderBtn.addEventListener('click', openRiderSignup);
+            }
+            
+            // Refresh Riders button click handler
+            const refreshRidersBtn = document.getElementById('refreshRidersBtn');
+            if (refreshRidersBtn) {
+                refreshRidersBtn.addEventListener('click', function() {
+                    renderRiders();
+                    showNotification('Riders list refreshed', 'success');
+                });
+            }
+            
+            // Close modal when clicking outside the iframe
+            const riderSignupModal = document.getElementById('riderSignupModal');
+            if (riderSignupModal) {
+                riderSignupModal.addEventListener('click', function(e) {
+                    if (e.target === riderSignupModal) {
+                        closeRiderSignup();
+                    }
+                });
+            }
+            
             // Search input keyup events with debounce
             const debounce = (func, wait) => {
                 let timeout;
@@ -4058,41 +4170,7 @@
                 // Check rider status updates
                 await checkForRiderUpdates();
 
-                // Check for new pending riders
-                const { data: pendingRiders, error: pendingError } = await supabase
-                    .from('riders')
-                    .select('*')
-                    .eq('status', 'Pending')
-                    .order('created_at', { ascending: false });
-
-                if (pendingError) {
-                    console.error('Error checking pending riders:', pendingError);
-                    return;
-                }
-
-                if (pendingRiders && pendingRiders.length > 0) {
-                    // Show notification dot on Riders tab
-                    const ridersTab = document.querySelector('.tab-btn[onclick="openTab(\'riders\')"]');
-                    if (ridersTab) {
-                        let notificationDot = ridersTab.querySelector('.notification-dot');
-                        if (!notificationDot) {
-                            notificationDot = document.createElement('div');
-                            notificationDot.className = 'notification-dot';
-                            ridersTab.appendChild(notificationDot);
-                        }
-                        notificationDot.style.display = 'block';
-                        notificationDot.textContent = pendingRiders.length;
-                        notificationDot.title = `${pendingRiders.length} pending riders awaiting approval`;
-                    }
-
-                    // Show system notification for the most recent pending rider
-                    if (pendingRiders[0]?.name) {
-                        showSystemNotification(
-                            'New Rider Signup',
-                            `${pendingRiders[0].name} is waiting for verification`
-                        );
-                    }
-                }
+                // Removed pending rider verification code
 
                 // Update dashboard data and notification dots
                 await calculateDashboardData();
