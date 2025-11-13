@@ -4977,8 +4977,8 @@
                 
                 // First, check if the table exists and we can access it
                 const { data: tableCheck, error: tableError } = await supabase
-                    .from('order_history')
-                    .select('count')
+                    .from('delivery_history')
+                    .select('*')
                     .limit(1);
 
                 if (tableError) {
@@ -4988,12 +4988,12 @@
 
                 console.log('Table access successful, fetching order history...');
                 
-                // Get all order history data with rider name
+                // Get all delivery history data
                 const { data: orders, error } = await supabase
-                    .from('order_history')
+                    .from('delivery_history')
                     .select(`
                         *,
-                        riders (
+                        rider:rider_id (
                             name
                         )
                     `)
@@ -5027,8 +5027,8 @@
                 const rows = (orders || []).map(order => {
                     try {
                         // Safely get rider name
-                        const riderName = (order.riders && order.riders.name) ? 
-                            order.riders.name : 'Not assigned';
+                        const riderName = (order.rider && order.rider.name) ? 
+                            order.rider.name : 'Not assigned';
                         
                         // Safely format date
                         let formattedDate = '';
