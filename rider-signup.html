@@ -480,16 +480,17 @@
                     options: { 
                         data: { 
                             name,
-                            user_type: 'rider'
+                            user_type: 'rider',
+                            contact,
+                            vehicle_type: vehicleType,
+                            plate_number: plateNumber
                         },
-                        // Use a relative path that will work in both development and production
-                        emailRedirectTo: '/rider-login.html'
+                        emailRedirectTo: window.location.origin + '/rider-login.html'
                     }
                 });
 
                 if (authError) {
                     console.error('Auth error:', authError);
-                    // Handle specific error for duplicate email in auth
                     if (authError.message.includes('already registered')) {
                         throw new Error('This email is already registered. Please use a different email or try logging in.');
                     }
@@ -499,8 +500,18 @@
                 const authUser = authData.user;
                 console.log('Auth user created:', authUser);
 
-                // Auth user has been successfully created, proceed to create rider profile
-                console.log('Auth user successfully created. Proceeding to create rider profile...');
+                // Sign in the user to establish a session
+                const { error: signInError } = await window.supabase.auth.signInWithPassword({
+                    email,
+                    password
+                });
+
+                if (signInError) {
+                    console.error('Sign in error:', signInError);
+                    throw new Error('Failed to establish session. Please try again.');
+                }
+
+                console.log('User session established');
                 
                 // Create rider profile directly in the riders table
                 console.log('Creating rider profile in database...');
