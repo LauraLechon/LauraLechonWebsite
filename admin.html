@@ -2255,8 +2255,8 @@
 
         // Optimized chart update function
         function updateMonthlySalesChart(monthlySales) {
-            if (!salesChart || isUpdating) {
-                updateRequested = true;
+            if (!salesChart) {
+                console.warn('Chart not initialized yet');
                 return;
             }
 
@@ -2265,36 +2265,23 @@
                 return;
             }
 
+            // Store the new data
             lastChartData = [...monthlySales];
-            isUpdating = true;
-            
-            // Use requestAnimationFrame for smooth animation
-            requestAnimationFrame(() => {
-                try {
-                    // Disable animations for this update
-                    const originalAnimation = salesChart.options.animation;
-                    salesChart.options.animation = false;
-                    
-                    // Update the data
-                    salesChart.data.datasets[0].data = monthlySales;
-                    
-                    // Update without animation
-                    salesChart.update('none');
-                    
-                    // Restore animation settings
-                    salesChart.options.animation = originalAnimation;
-                    
-                    // Process any pending updates
-                    if (updateRequested) {
-                        updateRequested = false;
-                        setTimeout(() => updateMonthlySalesChart(monthlySales), 0);
-                    }
-                } catch (error) {
-                    console.error('Error updating chart:', error);
-                } finally {
-                    isUpdating = false;
-                }
-            });
+
+            try {
+                // Update the data
+                salesChart.data.datasets[0].data = monthlySales;
+                
+                // Update with minimal configuration
+                salesChart.update({
+                    duration: 0,  // No animation
+                    lazy: true,   // Don't force redraw immediately
+                    easing: 'easeOutQuart'
+                });
+                
+            } catch (error) {
+                console.error('Error updating chart:', error);
+            }
         }
 
         // Initialize application
