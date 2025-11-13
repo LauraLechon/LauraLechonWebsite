@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rider Login - Laura Lechon</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="icon" type="image/x-icon" href="images/adminlogo.png">
+    <link rel="icon" type="image/x-icon" href="adminlogo.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- Load Supabase SDK first -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -114,22 +114,6 @@
             transform: translateY(0);
         }
         
-        .signup-link {
-            margin-top: 1.5rem;
-            color: #666;
-            font-size: 0.875rem;
-        }
-        
-        .signup-link a {
-            color: var(--primary-color);
-            text-decoration: none;
-            font-weight: 500;
-            transition: color 0.3s ease;
-        }
-        
-        .signup-link a:hover {
-            text-decoration: underline;
-        }
         
         .error {
             color: var(--error-color);
@@ -193,7 +177,7 @@
 </head>
 <body>
     <div class="login-container">
-        <img src="images/adminlogo.png" alt="Laura Lechon Logo" class="logo">
+        <img src="adminlogo.png" alt="Laura Lechon Logo" class="logo">
         <h1>Rider Login</h1>
         
         <form id="loginForm" class="login-form">
@@ -223,10 +207,6 @@
             </div>
             
             <button type="submit" class="login-btn">Login</button>
-            
-            <div class="signup-link">
-                Don't have an account? <a href="rider-signup.html">Sign up</a>
-            </div>
             
             <div class="error" id="loginError">Invalid email or password</div>
         </form>
