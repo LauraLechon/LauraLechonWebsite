@@ -2424,7 +2424,7 @@
                 const { data: orders, error } = await supabase
                     .from('order_history')
                     .select('*')
-                    .neq('status', 'Denied') // Exclude denied orders
+                    .eq('status', 'Delivered') // Only include delivered orders
                     .gte('date', `${currentYear}-01-01`)
                     .lte('date', `${currentYear}-12-31`);
 
@@ -2471,12 +2471,11 @@
         // Calculate dashboard data
         async function calculateDashboardData() {
             try {
-                // Get orders from order_history for the selected year
-                // Exclude denied orders from dashboard calculations
+                // Get only delivered orders from order_history for the selected year
                 const { data: orders, error } = await supabase
                     .from('order_history')
                     .select('*')
-                    .neq('status', 'Denied') // Exclude denied orders
+                    .eq('status', 'Delivered') // Only include delivered orders
                     .gte('date', `${currentYear}-01-01`)
                     .lte('date', `${currentYear}-12-31`);
 
