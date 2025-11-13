@@ -504,31 +504,41 @@
                 // Auth user has been successfully created, proceed to create rider profile
                 console.log('Auth user successfully created. Proceeding to create rider profile...');
                 
-                // Add a small delay to ensure auth is fully processed
-                await new Promise(r => setTimeout(r, 500));
-                
-                const { data: rider, error: insertError } = await window.supabase
-                    .rpc('create_rider_profile', {
-                        p_name: name,
-                        p_email: email,
-                        p_contact: contact,
-                        p_vehicle_type: vehicleType,
-                        p_plate_number: plateNumber,
-                        p_status: 'Active',
-                        p_auth_user_id: authUser.id
-                    });
+                // Function to create rider profile with retry logic
+                const createProfileWithRetry = async (retries = 3, delay = 1000) => {
+                    for (let i = 0; i < retries; i++) {
+                        try {
+                            console.log(`Attempt ${i + 1} to create rider profile...`);
+                            const { data: rider, error: insertError } = await window.supabase
+                                .rpc('create_rider_profile', {
+                                    p_name: name,
+                                    p_email: email,
+                                    p_contact: contact,
+                                    p_vehicle_type: vehicleType,
+                                    p_plate_number: plateNumber,
+                                    p_status: 'Active',
+                                    p_auth_user_id: authUser.id
+                                });
 
-                // Since RPC returns an array, get the first item
-                const riderData = Array.isArray(rider) ? rider[0] : rider;
+                            if (insertError) {
+                                if (i === retries - 1) throw insertError; // If last attempt, throw the error
+                                console.warn(`Attempt ${i + 1} failed, retrying...`, insertError);
+                                await new Promise(r => setTimeout(r, delay * (i + 1))); // Exponential backoff
+                                continue;
+                            }
 
-                if (insertError) {
-                    console.error('Database error:', insertError);
-                    // Log the error for admin review
-                    console.error('Orphaned auth user created. Auth ID:', authUser.id);
-                    // Inform the user to contact support
-                    throw new Error('Account created but profile setup failed. Please contact support and reference: ' + authUser.id.substring(0, 8));
-                }
+                            // Success - return the rider data
+                            return Array.isArray(rider) ? rider[0] : rider;
+                        } catch (error) {
+                            if (i === retries - 1) throw error; // If last attempt, throw the error
+                            console.warn(`Attempt ${i + 1} failed with error, retrying...`, error);
+                            await new Promise(r => setTimeout(r, delay * (i + 1))); // Exponential backoff
+                        }
+                    }
+                };
 
+                // Call the retry function
+                const riderData = await createProfileWithRetry();
                 console.log('Rider profile created successfully:', riderData);
 
                 // Sign out the user immediately to prevent auto-login
