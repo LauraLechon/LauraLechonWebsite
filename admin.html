@@ -2442,19 +2442,29 @@
                 showNotification('Error loading data. Please refresh the page.', 'error');
             }
         }
-
+        
         // Function to open rider signup modal
         function openRiderSignup() {
             const modal = document.getElementById('riderSignupModal');
             const iframe = document.getElementById('riderSignupIframe');
+            
+            if (!modal || !iframe) {
+                console.error('Modal or iframe element not found');
+                return;
+            }
             
             // Show the modal first
             modal.style.display = 'flex';
             
             // Set the iframe source with a small delay to ensure the modal is visible
             setTimeout(() => {
+                // Pass the Supabase client to the iframe
+                iframe.onload = function() {
+                    // Pass the Supabase client to the iframe
+                    iframe.contentWindow.supabase = window.supabase;
+                };
                 // Set the iframe source to the rider signup page with a timestamp to prevent caching
-                iframe.src = 'rider-signup.html?t=' + new Date().getTime();
+                iframe.src = 'rider-signup.html?t=' + new Date().getTime() + '&from=admin';
             }, 100);
             
             // Listen for messages from the iframe
