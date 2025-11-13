@@ -4973,13 +4973,38 @@
         // Add download function
         async function downloadOrderHistory() {
             try {
-                // Get all order history data
+                console.log('Starting order history download...');
+                
+                // First, check if the table exists and we can access it
+                const { data: tableCheck, error: tableError } = await supabase
+                    .from('order_history')
+                    .select('count')
+                    .limit(1);
+
+                if (tableError) {
+                    console.error('Error accessing order_history table:', tableError);
+                    throw new Error(`Cannot access order history: ${tableError.message}`);
+                }
+
+                console.log('Table access successful, fetching order history...');
+                
+                // Get all order history data with rider name
                 const { data: orders, error } = await supabase
                     .from('order_history')
-                    .select('*, riders(name)')
+                    .select(`
+                        *,
+                        riders (
+                            name
+                        )
+                    `)
                     .order('created_at', { ascending: false });
 
-                if (error) throw error;
+                if (error) {
+                    console.error('Supabase query error:', error);
+                    throw error;
+                }
+                
+                console.log(`Fetched ${orders?.length || 0} orders`);
 
                 // Prepare CSV headers
                 const headers = [
@@ -4998,22 +5023,45 @@
                     'Delivery Date'
                 ];
 
-                // Prepare CSV rows
-                const rows = orders.map(order => [
-                    order.transaction_id,
-                    order.name,
-                    `'${order.contact}`,
-                    order.email,
-                    order.date,
-                    order.time,
-                    order.address,
-                    order.landmarks || 'None',
-                    order.order_items,
-                    order.paid_amount, // plain number
-                    order.balance,     // plain number
-                    order.riders ? order.riders.name : 'Not assigned',
-                    new Date(order.created_at).toLocaleString()
-                ]);
+                // Prepare CSV rows with null/undefined checks
+                const rows = (orders || []).map(order => {
+                    try {
+                        // Safely get rider name
+                        const riderName = (order.riders && order.riders.name) ? 
+                            order.riders.name : 'Not assigned';
+                        
+                        // Safely format date
+                        let formattedDate = '';
+                        try {
+                            formattedDate = order.created_at ? 
+                                new Date(order.created_at).toLocaleString() : 
+                                'N/A';
+                        } catch (e) {
+                            console.warn('Error formatting date:', e);
+                            formattedDate = 'Invalid Date';
+                        }
+
+                        // Return row with proper escaping for CSV
+                        return [
+                            order.transaction_id || 'N/A',
+                            order.name || 'N/A',
+                            order.contact ? `'${order.contact}` : 'N/A',
+                            order.email || 'N/A',
+                            order.date || 'N/A',
+                            order.time || 'N/A',
+                            (order.address || 'N/A').replace(/"/g, '""'), // Escape quotes
+                            (order.landmarks || 'None').replace(/"/g, '""'),
+                            (order.order_items || 'N/A').replace(/"/g, '""'),
+                            order.paid_amount != null ? order.paid_amount : 0,
+                            order.balance != null ? order.balance : 0,
+                            riderName,
+                            formattedDate
+                        ];
+                    } catch (rowError) {
+                        console.error('Error processing order row:', rowError, order);
+                        return [];
+                    }
+                }).filter(row => row.length > 0); // Remove any empty rows from processing errors
 
                 // Create CSV content
                 const csvContent = [
