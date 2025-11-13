@@ -2250,14 +2250,25 @@
 
         // Chart update optimization
         let lastChartData = null;
-        let isUpdating = false;
-        let updateRequested = false;
+        let chartUpdateInProgress = false;
 
         // Chart update function with loop prevention
         function updateMonthlySalesChart(monthlySales) {
             try {
                 if (!salesChart) {
                     console.warn('Chart not initialized yet');
+                    return;
+                }
+
+                // Prevent concurrent updates
+                if (chartUpdateInProgress) {
+                    console.log('Chart update already in progress, skipping...');
+                    return;
+                }
+
+                // Ensure monthlySales is an array
+                if (!Array.isArray(monthlySales)) {
+                    console.warn('Invalid data passed to updateMonthlySalesChart:', monthlySales);
                     return;
                 }
 
@@ -2269,16 +2280,18 @@
                     return;
                 }
                 
+                chartUpdateInProgress = true;
+                
                 // Store the new data as string for next comparison
                 lastChartData = newDataStr;
                 
-                // Update chart data
-                salesChart.data.datasets[0].data = monthlySales;
+                // Update chart data with a new array reference
+                salesChart.data.datasets[0].data = [...monthlySales];
                 
                 // Update chart with minimal configuration
                 salesChart.update({
                     duration: 0,  // No animation
-                    lazy: true,    // Don't force redraw immediately
+                    lazy: false,   // Ensure immediate update
                     silent: true   // Prevent any events that might trigger updates
                 });
                 
@@ -2286,6 +2299,8 @@
                 console.error('Error updating chart:', error);
                 // Reset lastChartData on error to ensure next update isn't skipped
                 lastChartData = null;
+            } finally {
+                chartUpdateInProgress = false;
             }
         }
 
@@ -2442,17 +2457,16 @@
         // Update the monthly total display
         async function updateMonthlyTotal() {
             try {
-            const monthDropdown = document.getElementById('monthDropdown');
-            const selectedMonth = parseInt(monthDropdown.value);
+                const monthDropdown = document.getElementById('monthDropdown');
+                const selectedMonth = parseInt(monthDropdown.value);
                 const monthlySales = await calculateMonthlySales();
                 const selectedMonthTotal = monthlySales[selectedMonth] || 0;
 
-            document.getElementById('selectedMonthTotal').textContent = `₱${selectedMonthTotal.toLocaleString()}`;
+                document.getElementById('selectedMonthTotal').textContent = `₱${selectedMonthTotal.toLocaleString()}`;
                 
-                // Update the chart with new data
-                if (salesChart) {
-                    salesChart.data.datasets[0].data = monthlySales;
-                    salesChart.update();
+                // Only update the chart if it's the initial load (no data yet)
+                if (salesChart && !lastChartData) {
+                    updateMonthlySalesChart(monthlySales);
                 }
             } catch (error) {
                 console.error('Error updating monthly total:', error);
