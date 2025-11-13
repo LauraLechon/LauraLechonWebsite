@@ -311,21 +311,6 @@
         </div>
     </div>
 
-    <!-- Add Verification Modal -->
-    <div id="verificationModal" class="modal" style="display: none;">
-        <div class="modal-content" style="max-width: 400px;">
-            <div class="modal-header">
-                <h3 class="modal-title">Account Verification</h3>
-            </div>
-            <div class="modal-body">
-                <p>Thank you for signing up! Please wait while the admin verifies your account.</p>
-            </div>
-            <div class="modal-footer">
-                <button class="modal-btn" onclick="window.location.href='rider-login.html'">Go to Login</button>
-            </div>
-        </div>
-    </div>
-
     <script>
         // Add notification container
         const notificationContainer = document.createElement('div');
@@ -523,7 +508,7 @@
                         contact: contact,
                         vehicle_type: vehicleType,
                         plate_number: plateNumber,
-                        status: 'Pending',
+                        status: 'Active',
                         auth_user_id: authUser.id
                     }])
                     .select()
@@ -541,12 +526,17 @@
                 }
 
                 console.log('Rider profile created successfully:', riderData);
-
-                // Sign out the user immediately to prevent auto-login
-                await window.supabase.auth.signOut();
-
-                // Show verification modal
-                document.getElementById('verificationModal').style.display = 'flex';
+                
+                // Show success message on login page if redirected after signup
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('signup') === 'success') {
+                    showNotification('Account created successfully! You can now log in.', 'success');
+                    // Remove the signup parameter from URL
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+                
+                // Redirect to login page
+                window.location.href = 'rider-login.html';
                 
                 // Reset form
                 event.target.reset();
