@@ -2448,21 +2448,30 @@
             const modal = document.getElementById('riderSignupModal');
             const iframe = document.getElementById('riderSignupIframe');
             
-            // Set the iframe source to the rider signup page
-            iframe.src = 'rider-signup.html';
-            
-            // Show the modal
+            // Show the modal first
             modal.style.display = 'flex';
+            
+            // Set the iframe source with a small delay to ensure the modal is visible
+            setTimeout(() => {
+                // Set the iframe source to the rider signup page with a timestamp to prevent caching
+                iframe.src = 'rider-signup.html?t=' + new Date().getTime();
+            }, 100);
             
             // Listen for messages from the iframe
             const messageHandler = function(event) {
+                // Only process messages from our iframe
+                if (event.source !== iframe.contentWindow) return;
+                
                 if (event.data.type === 'CLOSE_RIDER_SIGNUP') {
                     // Close the modal
                     modal.style.display = 'none';
-                    iframe.src = 'about:blank';
                     
-                    // Refresh the riders list
-                    renderRiders();
+                    // Add a small delay before resetting the iframe source to allow for animations
+                    setTimeout(() => {
+                        iframe.src = 'about:blank';
+                        // Refresh the riders list
+                        renderRiders();
+                    }, 300);
                     
                     // Remove the event listener
                     window.removeEventListener('message', messageHandler);
@@ -2470,7 +2479,10 @@
             };
             
             // Add event listener for messages from the iframe
-            window.addEventListener('message', messageHandler);
+            window.addEventListener('message', messageHandler, false);
+            
+            // Store the handler so we can remove it later if needed
+            iframe._messageHandler = messageHandler;
         }
         
         // Function to close rider signup modal
