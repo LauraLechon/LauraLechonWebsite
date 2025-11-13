@@ -504,59 +504,40 @@
                 // Auth user has been successfully created, proceed to create rider profile
                 console.log('Auth user successfully created. Proceeding to create rider profile...');
                 
-                // Function to create rider profile with retry logic
-                const createProfileWithRetry = async (retries = 3, delay = 1000) => {
-                    for (let i = 0; i < retries; i++) {
-                        try {
-                            console.log(`Attempt ${i + 1} to create rider profile...`);
-                            const { data: rider, error: insertError } = await window.supabase
-                                .rpc('create_rider_profile', {
-                                    p_name: name,
-                                    p_email: email,
-                                    p_contact: contact,
-                                    p_vehicle_type: vehicleType,
-                                    p_plate_number: plateNumber,
-                                    p_status: 'Active',
-                                    p_auth_user_id: authUser.id
-                                });
+                // Create rider profile directly in the riders table
+                console.log('Creating rider profile in database...');
+                const { data: riderData, error: insertError } = await window.supabase
+                    .from('riders')
+                    .insert([{
+                        name: name,
+                        email: email,
+                        contact: contact,
+                        vehicle_type: vehicleType,
+                        plate_number: plateNumber,
+                        status: 'Pending',
+                        auth_user_id: authUser.id
+                    }])
+                    .select()
+                    .single();
 
-                            if (insertError) {
-                                if (i === retries - 1) throw insertError; // If last attempt, throw the error
-                                console.warn(`Attempt ${i + 1} failed, retrying...`, insertError);
-                                await new Promise(r => setTimeout(r, delay * (i + 1))); // Exponential backoff
-                                continue;
-                            }
-
-                            // Success - return the rider data
-                            return Array.isArray(rider) ? rider[0] : rider;
-                        } catch (error) {
-                            if (i === retries - 1) throw error; // If last attempt, throw the error
-                            console.warn(`Attempt ${i + 1} failed with error, retrying...`, error);
-                            await new Promise(r => setTimeout(r, delay * (i + 1))); // Exponential backoff
-                        }
+                if (insertError) {
+                    console.error('Error creating rider profile:', insertError);
+                    // Try to clean up the auth user if rider creation fails
+                    try {
+                        await window.supabase.auth.admin.deleteUser(authUser.id);
+                    } catch (cleanupError) {
+                        console.error('Failed to cleanup auth user:', cleanupError);
                     }
-                };
+                    throw new Error('Failed to create rider profile. Please try again.');
+                }
 
-                // Call the retry function
-                const riderData = await createProfileWithRetry();
                 console.log('Rider profile created successfully:', riderData);
 
                 // Sign out the user immediately to prevent auto-login
                 await window.supabase.auth.signOut();
 
-                // Show success message
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Rider Created Successfully!',
-                    html: `
-                        <p>The rider account has been created and is now active.</p>
-                    `,
-                    confirmButtonText: 'Return to Admin',
-                    confirmButtonColor: '#1d3a6b',
-                    allowOutsideClick: false
-                }).then(() => {
-                    window.close();
-                });
+                // Show verification modal
+                document.getElementById('verificationModal').style.display = 'flex';
                 
                 // Reset form
                 event.target.reset();
