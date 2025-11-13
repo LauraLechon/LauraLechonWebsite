@@ -484,19 +484,6 @@
 
                 const authUser = authData.user;
                 console.log('Auth user created:', authUser);
-
-                // Sign in the user to establish a session
-                const { error: signInError } = await window.supabase.auth.signInWithPassword({
-                    email,
-                    password
-                });
-
-                if (signInError) {
-                    console.error('Sign in error:', signInError);
-                    throw new Error('Failed to establish session. Please try again.');
-                }
-
-                console.log('User session established');
                 
                 // Create rider profile directly in the riders table
                 console.log('Creating rider profile in database...');
@@ -508,7 +495,7 @@
                         contact: contact,
                         vehicle_type: vehicleType,
                         plate_number: plateNumber,
-                        status: 'Active',
+                        status: 'Pending', // Set to Pending until email is verified
                         auth_user_id: authUser.id
                     }])
                     .select()
@@ -527,16 +514,16 @@
 
                 console.log('Rider profile created successfully:', riderData);
                 
-                // Show success message on login page if redirected after signup
-                const urlParams = new URLSearchParams(window.location.search);
-                if (urlParams.get('signup') === 'success') {
-                    showNotification('Account created successfully! You can now log in.', 'success');
-                    // Remove the signup parameter from URL
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                }
+                // Show success message
+                showNotification('Account created successfully! Please check your email to verify your account before logging in.', 'success');
                 
-                // Redirect to login page
-                window.location.href = 'rider-login.html';
+                // Reset form
+                event.target.reset();
+                
+                // Redirect to login page after a short delay
+                setTimeout(() => {
+                    window.location.href = 'rider-login.html?signup=success&email=' + encodeURIComponent(email);
+                }, 3000);
                 
                 // Reset form
                 event.target.reset();
