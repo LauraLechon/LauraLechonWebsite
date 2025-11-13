@@ -2253,34 +2253,39 @@
         let isUpdating = false;
         let updateRequested = false;
 
-        // Optimized chart update function
+        // Chart update function with loop prevention
         function updateMonthlySalesChart(monthlySales) {
-            if (!salesChart) {
-                console.warn('Chart not initialized yet');
-                return;
-            }
-
-            // Check if data actually changed
-            if (lastChartData && JSON.stringify(lastChartData) === JSON.stringify(monthlySales)) {
-                return;
-            }
-
-            // Store the new data
-            lastChartData = [...monthlySales];
-
             try {
-                // Update the data
+                if (!salesChart) {
+                    console.warn('Chart not initialized yet');
+                    return;
+                }
+
+                // Convert to string for comparison to detect actual changes
+                const newDataStr = JSON.stringify(monthlySales);
+                
+                // If data hasn't changed, don't update
+                if (lastChartData === newDataStr) {
+                    return;
+                }
+                
+                // Store the new data as string for next comparison
+                lastChartData = newDataStr;
+                
+                // Update chart data
                 salesChart.data.datasets[0].data = monthlySales;
                 
-                // Update with minimal configuration
+                // Update chart with minimal configuration
                 salesChart.update({
                     duration: 0,  // No animation
-                    lazy: true,   // Don't force redraw immediately
-                    easing: 'easeOutQuart'
+                    lazy: true,    // Don't force redraw immediately
+                    silent: true   // Prevent any events that might trigger updates
                 });
                 
             } catch (error) {
                 console.error('Error updating chart:', error);
+                // Reset lastChartData on error to ensure next update isn't skipped
+                lastChartData = null;
             }
         }
 
