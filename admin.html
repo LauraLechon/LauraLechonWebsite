@@ -2209,6 +2209,7 @@
         let salesChart = null;
         const ctx = document.getElementById('salesChart');
         if (ctx) {
+            console.log('Initializing sales chart...');
             salesChart = new Chart(ctx.getContext('2d'), {
             type: 'line',
             data: {
@@ -2474,6 +2475,8 @@
         // Calculate dashboard data
         async function calculateDashboardData() {
             try {
+                console.log(`Calculating dashboard data for year: ${currentYear}`);
+                
                 // Get only delivered orders from order_history for the selected year
                 const { data: orders, error } = await supabase
                     .from('order_history')
@@ -2483,6 +2486,8 @@
                     .lte('date', `${currentYear}-12-31`);
 
                 if (error) throw error;
+                
+                console.log(`Found ${orders ? orders.length : 0} delivered orders for ${currentYear}`);
 
                 // Initialize totals
                 let totalSales = 0;
@@ -2549,8 +2554,16 @@
                 document.getElementById('xxlCount').textContent = sizeCounts.XXL;
                 document.getElementById('xxxlCount').textContent = sizeCounts.XXXL;
 
-                // Update monthly sales chart
+                // Update monthly sales chart with the calculated data
+                console.log('Monthly sales data:', monthlySales);
                 updateMonthlySalesChart(monthlySales);
+                
+                // Force a chart update after a short delay to ensure it renders
+                setTimeout(() => {
+                    if (salesChart) {
+                        salesChart.update('none');
+                    }
+                }, 500);
 
             } catch (error) {
                 console.error('Error calculating dashboard data:', error);
@@ -2575,15 +2588,42 @@
 
         // Open tab function
         function openTab(tabName) {
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
+            // Hide all tab contents
+            const tabContents = document.getElementsByClassName('tab-content');
+            for (let i = 0; i < tabContents.length; i++) {
+                tabContents[i].classList.remove('active');
+            }
 
-            document.getElementById(tabName).classList.add('active');
-            document.querySelector(`.tab-btn[onclick="openTab('${tabName}')"]`).classList.add('active');
+            // Deactivate all tab buttons
+            const tabButtons = document.getElementsByClassName('tab-button');
+            for (let i = 0; i < tabButtons.length; i++) {
+                tabButtons[i].classList.remove('active');
+            }
+
+            // Show the selected tab content
+            const tabElement = document.getElementById(tabName);
+            if (tabElement) {
+                tabElement.classList.add('active');
+                
+                // If switching to dashboard, recalculate data after a small delay
+                if (tabName === 'dashboard') {
+                    setTimeout(() => {
+                        calculateDashboardData();
+                        // Force chart resize in case it wasn't visible before
+                        if (salesChart) {
+                            setTimeout(() => {
+                                salesChart.resize();
+                                salesChart.update('none');
+                            }, 100);
+                        }
+                    }, 100);
+                }
+            }
+
+            // Activate the clicked tab button
+            if (event && event.currentTarget) {
+                event.currentTarget.classList.add('active');
+            }
 
             // Clear notification badge when opening the order list tab
             if (tabName === 'order-list') {
@@ -4067,27 +4107,37 @@
 
         // Update monthly sales chart
         function updateMonthlySalesChart(monthlySales) {
-            if (!salesChart) return;
+            try {
+                if (!salesChart) {
+                    console.warn('Chart not initialized yet');
+                    return;
+                }
 
-            // Create labels for all months
-            const labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            
-            // Initialize data array with zeros
-            const data = Array(12).fill(0);
-            
-            // Fill in the data from monthlySales
-            Object.entries(monthlySales).forEach(([monthYear, amount]) => {
-                const [year, month] = monthYear.split('-');
-                if (parseInt(year) === currentYear) {
-                    const monthIndex = parseInt(month) - 1;
-                    data[monthIndex] = amount;
+                console.log('Updating chart with data:', monthlySales);
+                
+                // Ensure monthlySales is an array with 12 elements
+                const chartData = Array.isArray(monthlySales) ? 
+                    [...monthlySales].map(Number) : 
+                    Array(12).fill(0);
+                
+                // Ensure we have exactly 12 months of data
+                while (chartData.length < 12) {
+                    chartData.push(0);
+                }
+                
+                // Update chart data with a new array reference to ensure change detection
+                salesChart.data.datasets[0].data = chartData.slice(0, 12);
+                
+                // Update chart with minimal configuration
+                salesChart.update({
+                    duration: 0,  // No animation for faster updates
+                    lazy: false,  // Ensure immediate update
+                    silent: true  // Prevent any events that might trigger updates
+                });
+                
+            } catch (error) {
+                console.error('Error updating chart:', error);
             }
-            });
-
-            // Update chart data
-            salesChart.data.labels = labels;
-            salesChart.data.datasets[0].data = data;
-            salesChart.update();
         }
 
         // Update notification dot
