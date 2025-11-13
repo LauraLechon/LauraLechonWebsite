@@ -778,7 +778,11 @@
             <div class="modal-body">
                 <div class="success-message">
                     <p>Thank you for your order!</p>
-                    <p>We will send you a confirmation to your email shortly.</p>
+                    <p><strong>Transaction ID:</strong> <span id="transactionIdDisplay"></span></p>
+                    <p>We will send a confirmation to your email shortly.</p>
+                    <p style="color: var(--accent-color); font-weight: bold; margin-top: 15px;">
+                        Please take a screenshot of this page and keep it as proof of transaction.
+                    </p>
                 </div>
             </div>
             <div class="modal-footer">
@@ -1159,8 +1163,9 @@
                     throw new Error('Failed to save order');
                 }
                 
-                // Show success message
+                // Show success message with transaction ID
                 document.getElementById('orderModal').style.display = 'none';
+                document.getElementById('transactionIdDisplay').textContent = order.transaction_id;
                 document.getElementById('successModal').style.display = 'flex';
                 
                 // Reset form fields
