@@ -2479,8 +2479,6 @@
         // Calculate dashboard data
         async function calculateDashboardData() {
             try {
-                console.log(`Calculating dashboard data for year: ${currentYear}`);
-                
                 // Get only delivered orders from order_history for the selected year
                 const { data: orders, error } = await supabase
                     .from('order_history')
@@ -2491,8 +2489,6 @@
 
                 if (error) throw error;
                 
-                console.log(`Found ${orders ? orders.length : 0} delivered orders for ${currentYear}`);
-
                 // Initialize totals
                 let totalSales = 0;
                 let totalLechon = 0;
@@ -2559,7 +2555,6 @@
                 document.getElementById('xxxlCount').textContent = sizeCounts.XXXL;
 
                 // Update monthly sales chart with the calculated data
-                console.log('Monthly sales data:', monthlySales);
                 updateMonthlySalesChart(monthlySales);
                 
                 // Force a chart update after a short delay to ensure it renders
