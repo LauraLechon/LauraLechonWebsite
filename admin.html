@@ -4230,42 +4230,51 @@
                 
                 console.log('Update data being sent to Supabase:', updateData);
 
-                // Update and fetch in a single query
-                const { data, error } = await supabase
+                // First, just update without trying to return data
+                const { error: updateError } = await supabase
                     .from('riders')
                     .update(updateData)
-                    .eq('id', riderId)
-                    .select()
-                    .single();
+                    .eq('id', riderId);
 
-                if (error) {
-                    console.error('Supabase update error:', error);
-                    if (error.code === '42501') {
+                if (updateError) {
+                    console.error('Supabase update error:', updateError);
+                    if (updateError.code === '42501') {
                         throw new Error('Permission denied. Check your Row Level Security (RLS) policies.');
                     }
-                    throw error;
+                    throw updateError;
                 }
                 
-                if (!data) {
-                    throw new Error('No data returned from update');
-                }
+                console.log('Update successful, fetching updated rider...');
                 
-                console.log('Rider updated successfully:', data);
+                // Now fetch the updated rider separately
+                const { data: updatedRider, error: fetchError } = await supabase
+                    .from('riders')
+                    .select('*')
+                    .eq('id', riderId)
+                    .single();
                 
-                // Update the local riders array immediately
-                if (!Array.isArray(window.riders)) {
-                    window.riders = [];
-                }
-                
-                const riderIdNum = Number(riderId);
-                const riderIndex = window.riders.findIndex(r => r && (Number(r.id) === riderIdNum));
-                
-                if (riderIndex !== -1) {
-                    window.riders[riderIndex] = data;
-                    console.log('Updated rider in local array at index', riderIndex);
-                } else {
-                    window.riders.unshift(data);
-                    console.log('Added rider to local array');
+                if (fetchError) {
+                    console.error('Error fetching updated rider:', fetchError);
+                    // If fetch fails, we still consider the update successful
+                    console.warn('Update succeeded but could not fetch updated data');
+                } else if (updatedRider) {
+                    console.log('Rider data fetched successfully:', updatedRider);
+                    
+                    // Update the local riders array
+                    if (!Array.isArray(window.riders)) {
+                        window.riders = [];
+                    }
+                    
+                    const riderIdNum = Number(riderId);
+                    const riderIndex = window.riders.findIndex(r => r && (Number(r.id) === riderIdNum));
+                    
+                    if (riderIndex !== -1) {
+                        window.riders[riderIndex] = updatedRider;
+                        console.log('Updated rider in local array at index', riderIndex);
+                    } else {
+                        window.riders.unshift(updatedRider);
+                        console.log('Added rider to local array');
+                    }
                 }
                 
                 // Close modal before re-rendering
