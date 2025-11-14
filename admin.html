@@ -4194,10 +4194,8 @@
                     return;
                 }
 
-                console.log('Updating rider with data:', { name, email, contact, vehicleType, plateNumber, status });
-                
                 // Update existing rider
-                const { data, error } = await supabase
+                const { error } = await supabase
                     .from('riders')
                     .update({
                         name,
@@ -4208,22 +4206,13 @@
                         status,
                         updated_at: new Date().toISOString()
                     })
-                    .eq('id', riderId)
-                    .select();
+                    .eq('id', riderId);
 
-                if (error) {
-                    console.error('Supabase update error:', error);
-                    throw error;
-                }
+                if (error) throw error;
                 
-                console.log('Update response:', data);
                 showNotification('Rider updated successfully', 'success');
                 closeRiderModal();
-                
-                // Force refresh the riders list
-                window.riders = null; // Clear cached riders
-                await loadData(); // Reload all data including riders
-                await renderRiders(); // Re-render the riders table
+                await renderRiders();
                 await calculateDashboardData(); // Update dashboard stats
             } catch (error) {
                 console.error('Error saving rider:', error);
