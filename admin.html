@@ -65,6 +65,18 @@
             // Small delay to ensure all scripts are loaded
             setTimeout(initApplication, 300);
         });
+        
+        // Initialize Supabase with configuration from window.supabaseConfig
+        if (window.supabaseConfig?.url && window.supabaseConfig?.key) {
+            window.supabase = supabase.createClient(window.supabaseConfig.url, window.supabaseConfig.key);
+            console.log('Supabase client initialized with config:', {
+                url: window.supabaseConfig.url ? '✓ Configured' : '✗ Missing',
+                anonKey: window.supabaseConfig.key ? '✓ Configured' : '✗ Missing',
+                supabase: !!window.supabase ? '✓ Initialized' : '✗ Not initialized'
+            });
+        } else {
+            console.error('Missing Supabase configuration. Please check your supabase-config.js');
+        }
     </script>
     
     <!-- Load other resources -->
@@ -2089,41 +2101,6 @@
                         <option value="Available">Available</option>
                         <option value="On Delivery">On Delivery</option>
                         <option value="Pending">Pending</option>
-                    </select>
-                </div>
-                    <label for="riderName">Name</label>
-                    <input type="text" id="riderName" placeholder="Enter rider name">
-                </div>
-                <div class="form-group">
-                    <label for="riderEmail">Email</label>
-                    <input type="email" id="riderEmail" placeholder="Enter rider email">
-                </div>
-                <div class="form-group">
-                    <label for="riderContact">Contact Number</label>
-                    <div class="contact-input-container">
-                        <div class="country-code">+63</div>
-                        <input type="tel" id="riderContact" placeholder="9123456789" pattern="[0-9]{10}">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="riderVehicle">Vehicle Type</label>
-                    <select id="riderVehicle">
-                        <option value="Motorcycle">Motorcycle</option>
-                        <option value="Bicycle">Bicycle</option>
-                        <option value="Car">Car</option>
-                        <option value="Tricycle">Tricycle</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="riderPlate">Plate Number</label>
-                    <input type="text" id="riderPlate" placeholder="Enter plate number">
-                </div>
-                <div class="form-group">
-                    <label for="riderStatus">Status</label>
-                    <select id="riderStatus">
-                        <option value="Available">Available</option>
-                        <option value="On Delivery">On Delivery</option>
-                        <option value="Not Available">Not Available</option>
                     </select>
                 </div>
             </div>
