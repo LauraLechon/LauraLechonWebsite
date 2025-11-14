@@ -4861,7 +4861,7 @@
                 // Clear existing rows
                 ridersTable.innerHTML = '';
 
-                if (riders.length === 0) {
+                if (window.riders.length === 0) {
                     const row = document.createElement('tr');
                     row.innerHTML = '<td colspan="7" class="no-riders">No riders found in the system</td>';
                     ridersTable.appendChild(row);
@@ -4869,10 +4869,10 @@
                 }
 
                 // Calculate rider stats
-                const totalRiders = riders.length;
-                const availableRiders = riders.filter(r => r.status === 'Available').length;
-                const onDeliveryRiders = riders.filter(r => r.status === 'On Delivery').length;
-                const pendingRiders = riders.filter(r => r.status === 'Pending').length;
+                const totalRiders = window.riders.length;
+                const availableRiders = window.riders.filter(r => r.status === 'Available').length;
+                const onDeliveryRiders = window.riders.filter(r => r.status === 'On Delivery').length;
+                const pendingRiders = window.riders.filter(r => r.status === 'Pending').length;
 
                 // Update stats display
                 const updateStat = (id, value) => {
@@ -4885,7 +4885,7 @@
                 updateStat('onDeliveryRiders', `On Delivery: ${onDeliveryRiders}`);
 
                 // Render each rider
-                riders.forEach(rider => {
+                window.riders.forEach(rider => {
                     if (!rider) return;
 
                     const statusClass = {
