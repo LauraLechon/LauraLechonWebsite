@@ -71,43 +71,6 @@
     <link rel="icon" type="image/x-icon" href="adminlogo.png">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
-    <!-- Application Initialization -->
-    <script>
-        function initApplication() {
-            console.log('Initializing application...');
-            
-            // Check if configuration is loaded
-            if (!window.brevoConfig || !window.brevoConfig.isConfigured) {
-                console.warn('Configuration not properly loaded. Some features may be disabled.');
-            } else if (window.brevoConfig.apiKey) {
-                console.log('Brevo API key is configured');
-            } else {
-                console.warn('Brevo API key is not configured. Email functionality will be disabled.');
-            }
-            
-            // Check if Supabase is available
-            if (window.supabase) {
-                console.log('Supabase client is available');
-                
-                // Initialize your Supabase app here
-                try {
-                    if (typeof initializeApp === 'function') {
-                        initializeApp();
-                    }
-                } catch (error) {
-                    console.error('Error initializing application:', error);
-                }
-            } else {
-                console.error('Supabase client not found. Please check your Supabase initialization.');
-            }
-        }
-        
-        // Start the application when the DOM is fully loaded
-        document.addEventListener('DOMContentLoaded', function() {
-            // Small delay to ensure all scripts are loaded
-            setTimeout(initApplication, 100);
-        });
-    </script>
     <style>
         :root {
             --primary: #1d3a6b;
