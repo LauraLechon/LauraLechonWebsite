@@ -6,87 +6,47 @@
     <title>Admin Dashboard - Laura Lechon</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Load Supabase and configuration with proper error handling -->
+    <!-- Load Supabase first, then our config, then the rest of the app -->
+    <!-- Load Supabase and configuration -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="config.js"></script>
+    
+    <!-- Initialize the app -->
     <script>
-        // Global error handler for script loading
-        window.handleScriptError = function(error) {
-            console.error('Script loading error:', error);
-            showSystemNotification('Error', 'Failed to load required resources. Please refresh the page.');
-        };
-
-        // Function to initialize the application
-        function initializeApplication() {
-            try {
-                console.log('Initializing application...');
-                
-                // Check if Supabase is available
-                if (window.supabase) {
-                    console.log('Supabase client is available');
-                    
-                    // Log Supabase connection status
-                    console.log('Supabase connected:', {
-                        url: SUPABASE_URL ? '✓ Configured' : '✗ Missing',
-                        anonKey: SUPABASE_KEY ? '✓ Configured' : '✗ Missing',
-                        supabase: window.supabase ? '✓ Initialized' : '✗ Not Initialized'
+        // Initialize the app after config is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Small delay to ensure config is loaded
+            setTimeout(function() {
+                // Log configuration status
+                if (window.brevoConfig && window.brevoConfig.apiKey) {
+                    console.log('Brevo API key is configured');
+                    // Log the configuration (without exposing the full key)
+                    console.log('Brevo Config:', {
+                        apiUrl: window.brevoConfig.apiUrl,
+                        hasApiKey: !!window.brevoConfig.apiKey,
+                        apiKeyPrefix: window.brevoConfig.apiKey ? 
+                            window.brevoConfig.apiKey.substring(0, 6) + '...' : 'Not set',
+                        source: 'admin.html',
+                        isConfigured: window.brevoConfig.isConfigured,
+                        keyLength: window.brevoConfig.apiKey ? window.brevoConfig.apiKey.length : 0
                     });
-
+                    
                     // Initialize the app if available
                     if (typeof initializeApp === 'function') {
                         initializeApp();
-                    } else {
-                        console.error('initializeApp function not found');
                     }
-                } else {
-                    console.error('Supabase client not found. Please check your Supabase initialization.');
-                    showSystemNotification('Error', 'Failed to initialize database connection. Please refresh the page.');
-                }
-
-                // Check Brevo configuration
-                if (window.brevoConfig && window.brevoConfig.apiKey) {
-                    console.log('Brevo API key is configured');
                 } else {
                     console.warn('Brevo API key is not configured. Email functionality will be disabled.');
-                }
-            } catch (error) {
-                console.error('Error initializing application:', error);
-                showSystemNotification('Error', 'Failed to initialize application. Please check the console for details.');
-            }
-        }
-
-        // Load configuration files
-        function loadConfigFiles() {
-            const configScript = document.createElement('script');
-            configScript.src = 'supabase-config.js';
-            configScript.onerror = window.handleScriptError;
-            
-            configScript.onload = function() {
-                // Load other config files after supabase-config.js
-                const brevoConfigScript = document.createElement('script');
-                brevoConfigScript.src = 'config.js';
-                brevoConfigScript.onerror = window.handleScriptError;
-                
-                brevoConfigScript.onload = function() {
-                    // Start the application after all configs are loaded
-                    if (document.readyState === 'loading') {
-                        document.addEventListener('DOMContentLoaded', initializeApplication);
-                    } else {
-                        initializeApplication();
+                    console.log('Current brevoConfig:', window.brevoConfig);
+                    
+                    // Still try to initialize the app without email functionality
+                    if (typeof initializeApp === 'function') {
+                        initializeApp();
                     }
-                };
-                
-                document.head.appendChild(brevoConfigScript);
-            };
-            
-            document.head.appendChild(configScript);
-        }
-
-        // Start loading config files
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', loadConfigFiles);
-        } else {
-            loadConfigFiles();
-        }
+                }
+            }, 100);
+        });
     </script>
     
     <!-- Load other resources -->
