@@ -4215,6 +4215,22 @@
                     return;
                 }
 
+                // Fetch current rider data to compare
+                console.log('Fetching current rider data...');
+                const { data: currentRider, error: fetchCurrentError } = await supabase
+                    .from('riders')
+                    .select('*')
+                    .eq('id', riderId)
+                    .single();
+                
+                if (fetchCurrentError) {
+                    console.error('Error fetching current rider:', fetchCurrentError);
+                    throw fetchCurrentError;
+                }
+                
+                console.log('Current rider data:', currentRider);
+                console.log('Status comparison - Current:', currentRider.status, 'New:', status);
+
                 console.log('Updating rider in database...');
                 
                 // Update existing rider
@@ -4229,12 +4245,15 @@
                 };
                 
                 console.log('Update data being sent to Supabase:', updateData);
+                console.log('Update query: UPDATE riders SET ... WHERE id =', riderId);
 
                 // First, just update without trying to return data
-                const { error: updateError } = await supabase
+                const { data: updateResult, error: updateError, count } = await supabase
                     .from('riders')
                     .update(updateData)
                     .eq('id', riderId);
+
+                console.log('Update result:', { updateResult, error: updateError, count });
 
                 if (updateError) {
                     console.error('Supabase update error:', updateError);
@@ -4244,9 +4263,12 @@
                     throw updateError;
                 }
                 
-                console.log('Update successful, fetching updated rider...');
+                console.log('Update command executed, verifying changes...');
                 
-                // Now fetch the updated rider separately
+                // Wait a bit for the update to propagate
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Now fetch the updated rider to verify the change
                 const { data: updatedRider, error: fetchError } = await supabase
                     .from('riders')
                     .select('*')
@@ -4255,10 +4277,18 @@
                 
                 if (fetchError) {
                     console.error('Error fetching updated rider:', fetchError);
-                    // If fetch fails, we still consider the update successful
                     console.warn('Update succeeded but could not fetch updated data');
                 } else if (updatedRider) {
-                    console.log('Rider data fetched successfully:', updatedRider);
+                    console.log('Rider data after update:', updatedRider);
+                    console.log('Status after update:', updatedRider.status);
+                    
+                    // Check if the status actually changed
+                    if (updatedRider.status !== status) {
+                        console.error('WARNING: Status did not change!');
+                        console.error('Expected status:', status);
+                        console.error('Actual status:', updatedRider.status);
+                        showNotification('Warning: Status update may have failed. Check RLS policies.', 'warning');
+                    }
                     
                     // Update the local riders array
                     if (!Array.isArray(window.riders)) {
