@@ -4192,6 +4192,8 @@
 
         async function saveRider() {
             try {
+                console.log('Starting saveRider function...');
+                
                 const riderId = document.getElementById('riderId').value;
                 const name = document.getElementById('riderName').value.trim();
                 const email = document.getElementById('riderEmail').value.trim();
@@ -4200,49 +4202,84 @@
                 const plateNumber = document.getElementById('riderPlate').value.trim();
                 const status = document.getElementById('riderStatus').value;
 
+                console.log('Form values:', { riderId, name, email, contact, vehicleType, plateNumber, status });
+
                 // Validate inputs
                 if (!name || !email || !contact || !vehicleType || !status) {
-                    showNotification('Please fill in all required fields', 'error');
+                    const errorMsg = 'Please fill in all required fields';
+                    console.error('Validation error:', errorMsg);
+                    showNotification(errorMsg, 'error');
                     return;
                 }
 
                 if (!riderId) {
-                    showNotification('Invalid rider ID', 'error');
+                    const errorMsg = 'Invalid rider ID';
+                    console.error('Validation error:', errorMsg);
+                    showNotification(errorMsg, 'error');
                     return;
                 }
 
+                console.log('Updating rider in database...');
+                
                 // Update existing rider and get the updated record
+                const updateData = {
+                    name,
+                    email,
+                    contact,
+                    vehicle_type: vehicleType,
+                    plate_number: plateNumber,
+                    status,
+                    updated_at: new Date().toISOString()
+                };
+                
+                console.log('Update data being sent to Supabase:', updateData);
+
                 const { data, error } = await supabase
                     .from('riders')
-                    .update({
-                        name,
-                        email,
-                        contact,
-                        vehicle_type: vehicleType,
-                        plate_number: plateNumber,
-                        status,
-                        updated_at: new Date().toISOString()
-                    })
+                    .update(updateData)
                     .eq('id', riderId)
                     .select();  // Get the updated record
 
-                if (error) throw error;
+                if (error) {
+                    console.error('Supabase update error:', error);
+                    throw error;
+                }
+                
+                console.log('Supabase update response:', data);
                 
                 // Update the local riders array with the updated data
                 if (data && data.length > 0) {
                     const updatedRider = data[0];
+                    console.log('Updated rider data from Supabase:', updatedRider);
+                    
+                    if (!window.riders) window.riders = [];
                     const riderIndex = window.riders.findIndex(r => r.id === riderId);
+                    
                     if (riderIndex !== -1) {
                         window.riders[riderIndex] = updatedRider;
+                        console.log('Updated rider in local riders array');
+                    } else {
+                        console.log('Rider not found in local riders array, adding...');
+                        window.riders.push(updatedRider);
                     }
+                } else {
+                    console.warn('No data returned from Supabase update');
                 }
                 
                 showNotification('Rider updated successfully', 'success');
                 closeRiderModal();
+                
+                console.log('Refreshing riders list...');
                 await renderRiders();
                 await calculateDashboardData(); // Update dashboard stats
+                console.log('Rider update process completed');
+                
             } catch (error) {
-                console.error('Error saving rider:', error);
+                console.error('Error in saveRider:', {
+                    error,
+                    message: error.message,
+                    stack: error.stack
+                });
                 showNotification('Error saving rider: ' + (error.message || 'Unknown error'), 'error');
             }
         }
