@@ -269,29 +269,100 @@
                 
                 document.querySelectorAll('.error').forEach(el => el.style.display = 'none');
                 
-                // Sign in
-                const { data, error } = await window.supabase.auth.signInWithPassword({ 
+                // Sign in with Supabase Auth
+                const { data: authData, error: authError } = await window.supabase.auth.signInWithPassword({ 
                     email, 
                     password 
                 });
 
-                if (error) throw error;
+                if (authError) throw authError;
 
-                // Check rider profile
+                console.log('Auth successful, checking rider profile...');
+
+                // Check rider profile using EMAIL instead of auth_user_id
                 const { data: rider, error: riderError } = await window.supabase
                     .from('riders')
                     .select('*')
-                    .eq('auth_user_id', data.user.id)
+                    .eq('email', email)
                     .maybeSingle();
 
-                if (riderError || !rider) {
+                console.log('Rider query result:', { rider, riderError });
+
+                if (riderError) {
+                    console.error('Rider query error:', riderError);
+                    throw new Error('Error checking rider profile: ' + riderError.message);
+                }
+
+                if (!rider) {
                     await window.supabase.auth.signOut();
                     throw new Error('Rider profile not found. Please contact support.');
                 }
 
+                // Update auth_user_id if not set
+                if (!rider.auth_user_id && authData.user?.id) {
+                    console.log('Linking rider to auth user...');
+                    const { error: updateError } = await window.supabase
+                        .from('riders')
+                        .update({ auth_user_id: authData.user.id })
+                        .eq('id', rider.id);
+                    
+                    if (updateError) {
+                        console.error('Failed to link auth_user_id:', updateError);
+                    }
+                }
+
+                // Check if account is inactive
                 if (rider.status === 'Inactive') {
                     await window.supabase.auth.signOut();
                     throw new Error('Your account is inactive. Please contact support.');
+                }
+
+                // Check if email is verified
+                const { data: { user }, error: userError } = await window.supabase.auth.getUser();
+                if (userError) throw userError;
+                
+                if (!user.email_confirmed_at) {
+                    await window.supabase.auth.signOut();
+                    
+                    // Create resend verification button
+                    const resendBtn = document.createElement('button');
+                    resendBtn.textContent = 'Resend Verification Email';
+                    resendBtn.style.marginTop = '10px';
+                    resendBtn.style.padding = '8px 15px';
+                    resendBtn.style.borderRadius = '4px';
+                    resendBtn.style.backgroundColor = 'transparent';
+                    resendBtn.style.border = '1px solid #1d3a6b';
+                    resendBtn.style.color = '#1d3a6b';
+                    resendBtn.style.cursor = 'pointer';
+                    resendBtn.onclick = async (e) => {
+                        e.preventDefault();
+                        try {
+                            const { error: resendError } = await window.supabase.auth.resend({
+                                type: 'signup',
+                                email: user.email
+                            });
+                            
+                            if (resendError) throw resendError;
+                            showNotification('Verification email resent! Please check your inbox.', 'success');
+                        } catch (err) {
+                            console.error('Error resending verification email:', err);
+                            showNotification('Failed to resend verification email. Please try again later.', 'error');
+                        }
+                    };
+                    
+                    // Show error with resend button
+                    const errorContainer = document.createElement('div');
+                    errorContainer.innerHTML = 'Please verify your email before logging in.';
+                    errorContainer.style.marginTop = '10px';
+                    errorContainer.appendChild(document.createElement('br'));
+                    errorContainer.appendChild(resendBtn);
+                    
+                    const loginError = document.getElementById('loginError');
+                    loginError.innerHTML = '';
+                    loginError.appendChild(errorContainer);
+                    loginError.style.display = 'block';
+                    
+                    throw new Error('email_not_verified');
                 }
                 
                 showNotification('Login successful!', 'success');
@@ -305,7 +376,9 @@
                 console.error('Login error:', error);
                 
                 let errorMessage = 'Login failed. Please try again.';
-                if (error.message.includes('Invalid login credentials')) {
+                if (error.message === 'email_not_verified') {
+                    return; // Already handled with custom UI
+                } else if (error.message.includes('Invalid login credentials')) {
                     errorMessage = 'Invalid email or password';
                 } else if (error.message) {
                     errorMessage = error.message;
