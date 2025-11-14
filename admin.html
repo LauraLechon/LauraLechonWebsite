@@ -2442,16 +2442,36 @@
 
                 if (ordersError) throw ordersError;
 
-                // Load riders
-                const { data: riders, error: ridersError } = await supabase
-                    .from('riders')
-                    .select('*');
+                // Check Supabase client
+                if (!supabase) {
+                    console.error('Supabase client is not initialized');
+                    throw new Error('Supabase client is not initialized');
+                }
 
-                if (ridersError) throw ridersError;
+                // Log Supabase configuration (without exposing sensitive data)
+                console.log('Supabase connected:', {
+                    url: window.supabaseUrl ? '✓ Configured' : '✗ Missing',
+                    anonKey: window.supabaseKey ? '✓ Configured' : '✗ Missing',
+                    supabase: !!supabase ? '✓ Initialized' : '✗ Not initialized'
+                });
+
+                // Load riders
+                console.log('Fetching riders from Supabase...');
+                const { data: riders, error: ridersError, count } = await supabase
+                    .from('riders')
+                    .select('*', { count: 'exact' })
+                    .order('created_at', { ascending: false });
+
+                console.log('Supabase riders response:', { riders, ridersError, count });
+                if (ridersError) {
+                    console.error('Error fetching riders:', ridersError);
+                    throw ridersError;
+                }
 
                 // Store data in memory
                 window.orders = orders || [];
                 window.riders = riders || [];
+                console.log(`Stored ${window.riders.length} riders in memory`);
 
                 // Helper function to safely convert to ISO string
                 function safeToISOString(dateValue) {
