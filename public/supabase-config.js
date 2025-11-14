@@ -20,16 +20,19 @@ try {
     window.supabase = supabaseClient;
     window.supabaseClient = supabaseClient;
     
-    // Log successful initialization
-    console.log('Supabase client initialized successfully');
-    console.log('Supabase URL:', SUPABASE_URL);
-    
     // Expose config
     window.supabaseConfig = {
         url: SUPABASE_URL,
         key: '••••••••••••••••••••••••••••••••', // Masked for security
         supabase: '✓ Initialized'
     };
+    
+    // Log successful initialization with proper config checks
+    console.log('Supabase connected:', {
+        url: window.supabaseConfig?.url ? '✓ Configured' : '✗ Missing',
+        anonKey: window.supabaseConfig?.key ? '✓ Configured' : '✗ Missing',
+        supabase: !!window.supabase ? '✓ Initialized' : '✗ Not initialized'
+    });
     
 } catch (error) {
     console.error('Failed to initialize Supabase:', error);
