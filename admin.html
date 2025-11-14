@@ -4,12 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - Laura Lechon</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Load Supabase first, then our config, then the rest of the app -->
-    <!-- Load Supabase and configuration -->
+    <!-- Load Supabase client first -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="config.js"></script>
     
     <!-- Initialize the app -->
@@ -66,16 +65,34 @@
             setTimeout(initApplication, 300);
         });
         
-        // Initialize Supabase with configuration from window.supabaseConfig
-        if (window.supabaseConfig?.url && window.supabaseConfig?.key) {
-            window.supabase = supabase.createClient(window.supabaseConfig.url, window.supabaseConfig.key);
-            console.log('Supabase client initialized with config:', {
-                url: window.supabaseConfig.url ? '✓ Configured' : '✗ Missing',
-                anonKey: window.supabaseConfig.key ? '✓ Configured' : '✗ Missing',
-                supabase: !!window.supabase ? '✓ Initialized' : '✗ Not initialized'
-            });
+        // Initialize the application after Supabase is loaded
+        function initializeAfterSupabase() {
+            if (typeof supabase === 'undefined') {
+                console.error('Supabase client not loaded. Check the browser console for errors.');
+                return;
+            }
+
+            // Initialize Supabase client
+            if (window.supabaseConfig?.url && window.supabaseConfig?.key) {
+                window.supabase = supabase.createClient(window.supabaseConfig.url, window.supabaseConfig.key);
+                console.log('Supabase client initialized with config:', {
+                    url: window.supabaseConfig.url ? '✓ Configured' : '✗ Missing',
+                    anonKey: window.supabaseConfig.key ? '✓ Configured' : '✗ Missing',
+                    supabase: '✓ Initialized'
+                });
+                
+                // Now that Supabase is ready, initialize the application
+                initApplication();
+            } else {
+                console.error('Missing Supabase configuration. Please check your supabase-config.js');
+            }
+        }
+
+        // Wait for DOM and Supabase to be ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeAfterSupabase);
         } else {
-            console.error('Missing Supabase configuration. Please check your supabase-config.js');
+            initializeAfterSupabase();
         }
     </script>
     
