@@ -14,38 +14,56 @@
     
     <!-- Initialize the app -->
     <script>
-        // Initialize the app after config is loaded
+        // Function to check if Supabase is properly initialized
+        function isSupabaseInitialized() {
+            return window.supabase && window.supabaseClient && 
+                   window.supabaseConfig && window.supabaseConfig.url && 
+                   window.supabaseConfig.url !== '✗ Missing';
+        }
+
+        // Function to initialize the application
+        function initApplication() {
+            // Check if Supabase is initialized
+            if (!isSupabaseInitialized()) {
+                console.error('Supabase initialization failed. Please check your configuration.');
+                // Show error to user
+                alert('Failed to initialize the application. Please check the console for details.');
+                return;
+            }
+
+            console.log('Supabase is properly initialized:', {
+                url: window.supabaseConfig.url,
+                initialized: true
+            });
+
+            // Log Brevo configuration status if available
+            if (window.brevoConfig && window.brevoConfig.apiKey) {
+                console.log('Brevo API key is configured');
+                console.log('Brevo Config:', {
+                    apiUrl: window.brevoConfig.apiUrl,
+                    hasApiKey: !!window.brevoConfig.apiKey,
+                    apiKeyPrefix: '••••••',
+                    source: 'admin.html',
+                    isConfigured: window.brevoConfig.isConfigured,
+                    keyLength: window.brevoConfig.apiKey ? window.brevoConfig.apiKey.length : 0
+                });
+            } else {
+                console.warn('Brevo API key is not configured. Email functionality will be disabled.');
+            }
+
+            // Initialize the app if available
+            if (typeof initializeApp === 'function') {
+                console.log('Initializing application...');
+                initializeApp();
+            } else {
+                console.error('initializeApp function not found');
+            }
+        }
+
+        // Initialize the app after everything is loaded
         document.addEventListener('DOMContentLoaded', function() {
-            // Small delay to ensure config is loaded
-            setTimeout(function() {
-                // Log configuration status
-                if (window.brevoConfig && window.brevoConfig.apiKey) {
-                    console.log('Brevo API key is configured');
-                    // Log the configuration (without exposing the full key)
-                    console.log('Brevo Config:', {
-                        apiUrl: window.brevoConfig.apiUrl,
-                        hasApiKey: !!window.brevoConfig.apiKey,
-                        apiKeyPrefix: window.brevoConfig.apiKey ? 
-                            window.brevoConfig.apiKey.substring(0, 6) + '...' : 'Not set',
-                        source: 'admin.html',
-                        isConfigured: window.brevoConfig.isConfigured,
-                        keyLength: window.brevoConfig.apiKey ? window.brevoConfig.apiKey.length : 0
-                    });
-                    
-                    // Initialize the app if available
-                    if (typeof initializeApp === 'function') {
-                        initializeApp();
-                    }
-                } else {
-                    console.warn('Brevo API key is not configured. Email functionality will be disabled.');
-                    console.log('Current brevoConfig:', window.brevoConfig);
-                    
-                    // Still try to initialize the app without email functionality
-                    if (typeof initializeApp === 'function') {
-                        initializeApp();
-                    }
-                }
-            }, 100);
+            // Small delay to ensure all scripts are loaded
+            setTimeout(initApplication, 300);
         });
     </script>
     
