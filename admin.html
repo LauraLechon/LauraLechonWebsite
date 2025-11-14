@@ -1286,8 +1286,12 @@
             color: white;
         }
 
+        .action-btn.btn-edit {
+            background-color: #3498db;
+        }
+        
         .action-btn.btn-delete {
-            background-color: var(--error);
+            background-color: #e74c3c;
             color: white;
             width: 100%;
             justify-content: center;
@@ -2068,11 +2072,44 @@
     <div id="riderModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 class="modal-title" id="riderModalTitle">Add New Rider</h3>
+                <h3 class="modal-title" id="riderModalTitle">Edit Rider</h3>
                 <button class="close-btn" onclick="closeRiderModal()">&times;</button>
             </div>
             <div class="modal-body">
+                <input type="hidden" id="riderId">
                 <div class="form-group">
+                    <label for="riderName">Name</label>
+                    <input type="text" id="riderName" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="riderEmail">Email</label>
+                    <input type="email" id="riderEmail" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="riderContact">Contact Number</label>
+                    <input type="text" id="riderContact" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="riderVehicle">Vehicle Type</label>
+                    <select id="riderVehicle" class="form-control" required>
+                        <option value="Motorcycle">Motorcycle</option>
+                        <option value="Bicycle">Bicycle</option>
+                        <option value="Car">Car</option>
+                        <option value="Tricycle">Tricycle</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="riderPlate">Plate Number</label>
+                    <input type="text" id="riderPlate" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="riderStatus">Status</label>
+                    <select id="riderStatus" class="form-control" required>
+                        <option value="Available">Available</option>
+                        <option value="On Delivery">On Delivery</option>
+                        <option value="Pending">Pending</option>
+                    </select>
+                </div>
                     <label for="riderName">Name</label>
                     <input type="text" id="riderName" placeholder="Enter rider name">
                 </div>
@@ -4121,11 +4158,101 @@
             }
         }
     
+        // Rider edit functions
+        async function editRider(riderId) {
+            try {
+                // Get rider details
+                const { data: rider, error } = await supabase
+                    .from('riders')
+                    .select('*')
+                    .eq('id', riderId)
+                    .single();
+
+                if (error) throw error;
+
+                // Populate the modal with rider data
+                document.getElementById('riderId').value = rider.id;
+                document.getElementById('riderName').value = rider.name || '';
+                document.getElementById('riderEmail').value = rider.email || '';
+                document.getElementById('riderContact').value = rider.contact || '';
+                document.getElementById('riderVehicle').value = rider.vehicle_type || 'Motorcycle';
+                document.getElementById('riderPlate').value = rider.plate_number || '';
+                document.getElementById('riderStatus').value = rider.status || 'Available';
+                
+                // Show the modal
+                document.getElementById('riderModal').style.display = 'flex';
+            } catch (error) {
+                console.error('Error loading rider details:', error);
+                showNotification('Error loading rider details', 'error');
+            }
+        }
+
+        async function saveRider() {
+            try {
+                const riderId = document.getElementById('riderId').value;
+                const name = document.getElementById('riderName').value.trim();
+                const email = document.getElementById('riderEmail').value.trim();
+                const contact = document.getElementById('riderContact').value.trim();
+                const vehicleType = document.getElementById('riderVehicle').value;
+                const plateNumber = document.getElementById('riderPlate').value.trim();
+                const status = document.getElementById('riderStatus').value;
+
+                // Validate inputs
+                if (!name || !email || !contact || !vehicleType || !status) {
+                    showNotification('Please fill in all required fields', 'error');
+                    return;
+                }
+
+                if (!riderId) {
+                    showNotification('Invalid rider ID', 'error');
+                    return;
+                }
+
+                // Update existing rider
+                const { error } = await supabase
+                    .from('riders')
+                    .update({
+                        name,
+                        email,
+                        contact,
+                        vehicle_type: vehicleType,
+                        plate_number: plateNumber,
+                        status,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', riderId);
+
+                if (error) throw error;
+                
+                showNotification('Rider updated successfully', 'success');
+                closeRiderModal();
+                await renderRiders();
+                await calculateDashboardData(); // Update dashboard stats
+            } catch (error) {
+                console.error('Error saving rider:', error);
+                showNotification('Error saving rider: ' + (error.message || 'Unknown error'), 'error');
+            }
+        }
+
+        function closeRiderModal() {
+            document.getElementById('riderModal').style.display = 'none';
+            document.getElementById('riderId').value = '';
+            document.getElementById('riderName').value = '';
+            document.getElementById('riderEmail').value = '';
+            document.getElementById('riderContact').value = '';
+            document.getElementById('riderVehicle').value = 'Motorcycle';
+            document.getElementById('riderPlate').value = '';
+            document.getElementById('riderStatus').value = 'Available';
+        }
+
         // Expose to global scope for inline onclick handlers
         window.showAssignRiderModal = showAssignRiderModal;
         window.assignRiderToOrder = assignRiderToOrder;
         window.closeAssignRiderModal = closeAssignRiderModal;
         window.confirmOrder = confirmOrder;
+        window.editRider = editRider;
+        window.saveRider = saveRider;
+        window.closeRiderModal = closeRiderModal;
 
         // Accessibility helper: ensure form controls have an accessible name
         function ensureAccessibleFormLabels(root = document) {
@@ -4752,7 +4879,10 @@
                         <td>${rider.vehicle_type || 'N/A'}</td>
                         <td>${rider.plate_number || 'N/A'}</td>
                         <td><span class="rider-status ${statusClass}">${rider.status || 'N/A'}</span></td>
-                        <td>
+                        <td style="display: flex; gap: 5px;">
+                            <button class="action-btn btn-edit" onclick="editRider('${rider.id}'); return false;" style="background-color: #3498db;">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
                             <button class="action-btn btn-delete" onclick="deleteRider('${rider.id}'); return false;">
                                 <i class="fas fa-trash"></i> Delete
                             </button>
