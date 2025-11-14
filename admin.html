@@ -4247,64 +4247,51 @@
                 console.log('Update data being sent to Supabase:', updateData);
                 console.log('Update query: UPDATE riders SET ... WHERE id =', riderId);
 
-                // First, just update without trying to return data
-                const { data: updateResult, error: updateError, count } = await supabase
+                // Force a more explicit update that returns the data
+                const { data: updateResult, error: updateError } = await supabase
                     .from('riders')
                     .update(updateData)
-                    .eq('id', riderId);
+                    .eq('id', riderId)
+                    .select()
+                    .single();
 
-                console.log('Update result:', { updateResult, error: updateError, count });
+                console.log('Update result:', { updateResult, error: updateError });
 
                 if (updateError) {
                     console.error('Supabase update error:', updateError);
-                    if (updateError.code === '42501') {
-                        throw new Error('Permission denied. Check your Row Level Security (RLS) policies.');
+                    // Check for RLS policy error
+                    if (updateError.code === '42501' || updateError.message.includes('policy')) {
+                        throw new Error('Permission denied. Please check your Row Level Security (RLS) policies for the riders table.');
                     }
                     throw updateError;
                 }
+
+                // If no data returned, the update failed silently (likely RLS)
+                if (!updateResult) {
+                    throw new Error('Update failed: No data returned. This usually indicates an RLS policy issue.');
+                }
+
+                // Verify the status actually changed
+                if (updateResult.status !== status) {
+                    throw new Error(`Status update failed. Current: ${updateResult.status}, Expected: ${status}. Check RLS policies.`);
+                }
+
+                console.log('Update successful, verified:', updateResult);
                 
-                console.log('Update command executed, verifying changes...');
+                // Update the local riders array with the verified data
+                if (!Array.isArray(window.riders)) {
+                    window.riders = [];
+                }
                 
-                // Wait a bit for the update to propagate
-                await new Promise(resolve => setTimeout(resolve, 500));
+                const riderIdNum = Number(riderId);
+                const riderIndex = window.riders.findIndex(r => r && (Number(r.id) === riderIdNum));
                 
-                // Now fetch the updated rider to verify the change
-                const { data: updatedRider, error: fetchError } = await supabase
-                    .from('riders')
-                    .select('*')
-                    .eq('id', riderId)
-                    .single();
-                
-                if (fetchError) {
-                    console.error('Error fetching updated rider:', fetchError);
-                    console.warn('Update succeeded but could not fetch updated data');
-                } else if (updatedRider) {
-                    console.log('Rider data after update:', updatedRider);
-                    console.log('Status after update:', updatedRider.status);
-                    
-                    // Check if the status actually changed
-                    if (updatedRider.status !== status) {
-                        console.error('WARNING: Status did not change!');
-                        console.error('Expected status:', status);
-                        console.error('Actual status:', updatedRider.status);
-                        showNotification('Warning: Status update may have failed. Check RLS policies.', 'warning');
-                    }
-                    
-                    // Update the local riders array
-                    if (!Array.isArray(window.riders)) {
-                        window.riders = [];
-                    }
-                    
-                    const riderIdNum = Number(riderId);
-                    const riderIndex = window.riders.findIndex(r => r && (Number(r.id) === riderIdNum));
-                    
-                    if (riderIndex !== -1) {
-                        window.riders[riderIndex] = updatedRider;
-                        console.log('Updated rider in local array at index', riderIndex);
-                    } else {
-                        window.riders.unshift(updatedRider);
-                        console.log('Added rider to local array');
-                    }
+                if (riderIndex !== -1) {
+                    window.riders[riderIndex] = updateResult;
+                    console.log('Updated rider in local array at index', riderIndex);
+                } else {
+                    window.riders.unshift(updateResult);
+                    console.log('Added rider to local array');
                 }
                 
                 // Close modal before re-rendering
