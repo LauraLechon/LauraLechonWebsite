@@ -887,33 +887,45 @@
         }
 
         /* Riders table specific styles */
-        #riders table td {
-            vertical-align: middle !important;
-            white-space: nowrap;
-            padding: 8px 12px;
+        #ridersTableMain {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        #ridersTableMain th,
+        #ridersTableMain td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+            vertical-align: middle;
+        }
+        
+        #ridersTableMain th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #333;
         }
 
-        #riders .rider-status {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 100px;
-            padding: 5px 10px;
+        .rider-status {
+            display: inline-block;
+            padding: 5px 12px;
             border-radius: 4px;
+            font-size: 0.8rem;
             font-weight: 500;
             text-align: center;
+            min-width: 100px;
         }
 
-        #riders .action-btns {
+        .action-btns {
             display: flex;
-            gap: 5px;
+            gap: 8px;
             flex-wrap: nowrap;
-            justify-content: center;
+            justify-content: flex-start;
         }
 
-        #riders .action-btn {
+        .action-btn {
             white-space: nowrap;
-            padding: 5px 10px;
+            padding: 6px 12px;
             font-size: 0.8rem;
             border: none;
             border-radius: 4px;
@@ -922,6 +934,12 @@
             display: inline-flex;
             align-items: center;
             gap: 4px;
+            transition: all 0.2s;
+        }
+        
+        .action-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
         }
 
         #riders .btn-edit {
@@ -2084,7 +2102,7 @@
                 </div>
             </div>
             <div class="table-container">
-                <table>
+                <table id="ridersTableMain">
                     <thead>
                         <tr>
                             <th>Name</th>
@@ -5036,14 +5054,16 @@
                         <td>${rider.email || 'N/A'}</td>
                         <td>${rider.vehicle_type || 'N/A'}</td>
                         <td>${rider.plate_number || 'N/A'}</td>
-                        <td><span class="rider-status ${statusClass}">${rider.status || 'N/A'}</span></td>
-                        <td>
+                        <td class="status-cell">
+                            <span class="rider-status ${statusClass}">${rider.status || 'N/A'}</span>
+                        </td>
+                        <td class="actions-cell">
                             <div class="action-btns">
-                                <button class="action-btn btn-edit" onclick="editRider('${rider.id}'); return false;">
-                                    <i class="fas fa-edit"></i> Edit
+                                <button class="action-btn btn-edit" onclick="editRider('${rider.id}'); return false;" title="Edit Rider">
+                                    <i class="fas fa-edit"></i> <span class="btn-text">Edit</span>
                                 </button>
-                                <button class="action-btn btn-delete" onclick="deleteRider('${rider.id}'); return false;">
-                                    <i class="fas fa-trash"></i> Delete
+                                <button class="action-btn btn-delete" onclick="deleteRider('${rider.id}'); return false;" title="Delete Rider">
+                                    <i class="fas fa-trash"></i> <span class="btn-text">Delete</span>
                                 </button>
                             </div>
                         </td>
