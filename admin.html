@@ -4206,22 +4206,18 @@
 
                 // Validate inputs
                 if (!name || !email || !contact || !vehicleType || !status) {
-                    const errorMsg = 'Please fill in all required fields';
-                    console.error('Validation error:', errorMsg);
-                    showNotification(errorMsg, 'error');
+                    showNotification('Please fill in all required fields', 'error');
                     return;
                 }
 
                 if (!riderId) {
-                    const errorMsg = 'Invalid rider ID';
-                    console.error('Validation error:', errorMsg);
-                    showNotification(errorMsg, 'error');
+                    showNotification('Invalid rider ID', 'error');
                     return;
                 }
 
                 console.log('Updating rider in database...');
                 
-                // Update existing rider and get the updated record
+                // Update existing rider
                 const updateData = {
                     name,
                     email,
@@ -4234,93 +4230,61 @@
                 
                 console.log('Update data being sent to Supabase:', updateData);
 
-                // First, try to update and get the record in one operation
-                let { data, error } = await supabase
+                // Update and fetch in a single query
+                const { data, error } = await supabase
                     .from('riders')
                     .update(updateData)
                     .eq('id', riderId)
-                    .select();
+                    .select()
+                    .single();
 
-                // If no data is returned, the update might have succeeded but the select didn't return anything
-                // Let's try to fetch the rider separately to confirm
-                if ((!data || data.length === 0) && !error) {
-                    console.log('No data returned from update, trying to fetch rider separately...');
-                    const { data: fetchedData, error: fetchError } = await supabase
-                        .from('riders')
-                        .select('*')
-                        .eq('id', riderId)
-                        .single();
-                    
-                    if (fetchError) {
-                        console.error('Error fetching rider after update:', fetchError);
-                        throw new Error(`Failed to verify rider update: ${fetchError.message}`);
-                    }
-                    
-                    if (fetchedData) {
-                        console.log('Successfully fetched rider after update:', fetchedData);
-                        data = [fetchedData];
-                    } else {
-                        throw new Error('Rider not found in database after update attempt');
-                    }
-                } else if (error) {
+                if (error) {
                     console.error('Supabase update error:', error);
-                    
-                    // Check if it's an RLS violation
                     if (error.code === '42501') {
                         throw new Error('Permission denied. Check your Row Level Security (RLS) policies.');
                     }
-                    
                     throw error;
                 }
                 
-                console.log('Supabase update response:', data);
-                
-                // Update the local riders array with the updated data
-                if (data && data.length > 0) {
-                    const updatedRider = data[0];
-                    console.log('Updated rider data from Supabase:', updatedRider);
-                    
-                    // Ensure window.riders exists and is an array
-                    if (!Array.isArray(window.riders)) {
-                        window.riders = [];
-                    }
-                    
-                    // Convert riderId to number for consistent comparison
-                    const riderIdNum = Number(riderId);
-                    
-                    // Find the rider in the array, handling both string and number IDs
-                    const riderIndex = window.riders.findIndex(r => r && (r.id === riderIdNum || r.id === riderId));
-                    
-                    if (riderIndex !== -1) {
-                        // Update existing rider
-                        window.riders[riderIndex] = updatedRider;
-                        console.log('Updated rider in local riders array at index', riderIndex);
-                    } else {
-                        // Add new rider if not found
-                        console.log('Rider not found in local riders array, adding...');
-                        window.riders.unshift(updatedRider); // Add to the beginning of the array
-                    }
-                    
-                    // Force a re-render of the riders list with the updated data
-                    await renderRiders();
-                } else {
-                    throw new Error('No data returned from Supabase after update');
+                if (!data) {
+                    throw new Error('No data returned from update');
                 }
                 
-                showNotification('Rider updated successfully', 'success');
+                console.log('Rider updated successfully:', data);
+                
+                // Update the local riders array immediately
+                if (!Array.isArray(window.riders)) {
+                    window.riders = [];
+                }
+                
+                const riderIdNum = Number(riderId);
+                const riderIndex = window.riders.findIndex(r => r && (Number(r.id) === riderIdNum));
+                
+                if (riderIndex !== -1) {
+                    window.riders[riderIndex] = data;
+                    console.log('Updated rider in local array at index', riderIndex);
+                } else {
+                    window.riders.unshift(data);
+                    console.log('Added rider to local array');
+                }
+                
+                // Close modal before re-rendering
                 closeRiderModal();
                 
-                console.log('Refreshing riders list...');
+                // Show success message
+                showNotification('Rider updated successfully', 'success');
+                
+                // Wait a moment to ensure the database update is complete
+                await new Promise(resolve => setTimeout(resolve, 300));
+                
+                // Force a fresh render with updated data
                 await renderRiders();
-                await calculateDashboardData(); // Update dashboard stats
+                await calculateDashboardData();
+                
                 console.log('Rider update process completed');
                 
             } catch (error) {
-                console.error('Error in saveRider:', {
-                    error,
-                    message: error.message,
-                    stack: error.stack
-                });
+                console.error('Error in saveRider:', error);
                 showNotification('Error saving rider: ' + (error.message || 'Unknown error'), 'error');
             }
         }
