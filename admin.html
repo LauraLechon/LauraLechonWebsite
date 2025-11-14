@@ -4990,13 +4990,13 @@
             currentOrderForAssignment = orderId;
             
             // Get available riders (status is Available or On Delivery)
-            const availableRiders = riders.filter(r => r.status === 'Available' || r.status === 'On Delivery');
+            const availableRiders = window.riders ? window.riders.filter(r => r && (r.status === 'Available' || r.status === 'On Delivery')) : [];
             
             // Populate rider dropdown
             const riderSelect = document.getElementById('assignRiderSelect');
             riderSelect.innerHTML = '';
             
-            if (availableRiders.length === 0) {
+            if (!availableRiders || availableRiders.length === 0) {
                 const option = document.createElement('option');
                 option.value = '';
                 option.textContent = 'No available riders';
