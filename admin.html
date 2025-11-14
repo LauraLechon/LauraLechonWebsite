@@ -62,29 +62,29 @@
         // Initialize the app after everything is loaded
         document.addEventListener('DOMContentLoaded', function() {
             // Small delay to ensure all scripts are loaded
-            setTimeout(initApplication, 300);
+            setTimeout(initializeAfterSupabase, 500);
         });
-        
+
         // Initialize the application after Supabase is loaded
         function initializeAfterSupabase() {
-            if (typeof supabase === 'undefined') {
-                console.error('Supabase client not loaded. Check the browser console for errors.');
-                return;
-            }
-
-            // Initialize Supabase client
-            if (window.supabaseConfig?.url && window.supabaseConfig?.key) {
-                window.supabase = supabase.createClient(window.supabaseConfig.url, window.supabaseConfig.key);
-                console.log('Supabase client initialized with config:', {
-                    url: window.supabaseConfig.url ? '✓ Configured' : '✗ Missing',
-                    anonKey: window.supabaseConfig.key ? '✓ Configured' : '✗ Missing',
+            // Check if Supabase is loaded and available
+            if (window.supabase) {
+                // Supabase is already initialized by supabase-config.js
+                console.log('Supabase client already initialized:', {
+                    url: window.supabaseConfig?.url ? '✓ Configured' : '✗ Missing',
+                    anonKey: window.supabaseConfig?.key ? '✓ Configured' : '✗ Missing',
                     supabase: '✓ Initialized'
                 });
                 
                 // Now that Supabase is ready, initialize the application
                 initApplication();
             } else {
-                console.error('Missing Supabase configuration. Please check your supabase-config.js');
+                console.error('Supabase client not loaded. Please check if supabase-config.js is properly included and configured.');
+                // Try to recover by reloading the page after a delay
+                setTimeout(function() {
+                    console.log('Attempting to reload the page to initialize Supabase...');
+                    window.location.reload();
+                }, 2000);
             }
         }
 
