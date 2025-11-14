@@ -2431,9 +2431,9 @@
 
                 // Log Supabase configuration (without exposing sensitive data)
                 console.log('Supabase connected:', {
-                    url: window.supabaseUrl ? '✓ Configured' : '✗ Missing',
-                    anonKey: window.supabaseKey ? '✓ Configured' : '✗ Missing',
-                    supabase: !!supabase ? '✓ Initialized' : '✗ Not initialized'
+                    url: window.supabaseConfig?.url ? '✓ Configured' : '✗ Missing',
+                    anonKey: window.supabaseConfig?.key ? '✓ Configured' : '✗ Missing',
+                    supabase: !!window.supabase ? '✓ Initialized' : '✗ Not initialized'
                 });
 
                 // Load riders
