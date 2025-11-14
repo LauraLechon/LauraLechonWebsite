@@ -498,20 +498,12 @@
             margin-top: 15px;
         }
 
-        #riders table {
+        table {
             width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
-            table-layout: auto;
+            border-collapse: separate;
+            border-spacing: 0;
+            min-width: 1000px;
         }
-        
-        #riders table th:nth-child(1) { width: 15%; }
-        #riders table th:nth-child(2) { width: 15%; }
-        #riders table th:nth-child(3) { width: 20%; }
-        #riders table th:nth-child(4) { width: 15%; }
-        #riders table th:nth-child(5) { width: 15%; }
-        #riders table th:nth-child(6) { width: 10%; }
-        #riders table th:nth-child(7) { width: 10%; }
 
         th, td {
             padding: 12px 15px;
@@ -899,14 +891,6 @@
             vertical-align: middle !important;
             white-space: nowrap;
             padding: 8px 12px;
-            position: relative;
-        }
-        
-        #riders table td:last-child {
-            width: 120px;
-            min-width: 120px;
-            text-align: center;
-            padding: 5px;
         }
 
         #riders .rider-status {
@@ -921,43 +905,38 @@
         }
 
         #riders .action-btns {
-            display: flex !important;
-            flex-direction: column !important;
-            gap: 5px !important;
-            align-items: center !important;
-            justify-content: center !important;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            align-items: center;
+            width: 100%;
+            padding: 5px 0;
         }
 
         #riders .action-btn {
-            white-space: nowrap !important;
-            padding: 6px 8px !important;
-            font-size: 0.75rem !important;
-            border: none !important;
-            border-radius: 4px !important;
-            color: white !important;
-            cursor: pointer !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            gap: 4px !important;
-            width: 90px !important;
-            margin: 0 auto !important;
-            box-sizing: border-box !important;
-            text-align: center !important;
-            line-height: 1.2 !important;
+            white-space: nowrap;
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            width: 100%;
+            max-width: 100px;
+            box-sizing: border-box;
+            margin: 2px 0;
         }
 
         #riders .btn-edit {
             background-color: #3498db;
-            margin: 0 auto;
         }
 
         #riders .btn-delete {
             background-color: #e74c3c;
-            margin: 0 auto;
         }
 
         .status-badge {
@@ -5065,12 +5044,12 @@
                         <td>${rider.vehicle_type || 'N/A'}</td>
                         <td>${rider.plate_number || 'N/A'}</td>
                         <td><span class="rider-status ${statusClass}">${rider.status || 'N/A'}</span></td>
-                        <td style="width: 120px; min-width: 120px; text-align: center; padding: 5px;">
-                            <div class="action-btns" style="display: flex; flex-direction: column; gap: 5px; width: 100%;">
-                                <button class="action-btn btn-edit" onclick="editRider('${rider.id}'); return false;" style="width: 90px; margin: 0 auto; padding: 5px 8px; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                        <td style="padding: 8px 12px;">
+                            <div class="action-btns">
+                                <button class="action-btn btn-edit" onclick="editRider('${rider.id}'); return false;">
                                     <i class="fas fa-edit"></i> Edit
                                 </button>
-                                <button class="action-btn btn-delete" onclick="deleteRider('${rider.id}'); return false;" style="width: 90px; margin: 0 auto; padding: 5px 8px; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                <button class="action-btn btn-delete" onclick="deleteRider('${rider.id}'); return false;">
                                     <i class="fas fa-trash"></i> Delete
                                 </button>
                             </div>
