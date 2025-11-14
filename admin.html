@@ -2474,6 +2474,14 @@
                 const storedLastOrderStatusUpdateTime = localStorage.getItem('lastOrderStatusUpdate');
                 lastOrderStatusUpdateTime = safeToISOString(storedLastOrderStatusUpdateTime);
 
+                // After loading all data, render the riders
+                renderRiders();
+                
+                // Also render other components if needed
+                renderOrderList();
+                renderConfirmedOrders();
+                renderOrderHistory();
+
             } catch (error) {
                 console.error('Error loading data:', error);
                 showNotification('Error loading data. Please refresh the page.', 'error');
