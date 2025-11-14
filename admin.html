@@ -4280,16 +4280,29 @@
                     const updatedRider = data[0];
                     console.log('Updated rider data from Supabase:', updatedRider);
                     
-                    if (!window.riders) window.riders = [];
-                    const riderIndex = window.riders.findIndex(r => r.id === riderId);
+                    // Ensure window.riders exists and is an array
+                    if (!Array.isArray(window.riders)) {
+                        window.riders = [];
+                    }
+                    
+                    // Convert riderId to number for consistent comparison
+                    const riderIdNum = Number(riderId);
+                    
+                    // Find the rider in the array, handling both string and number IDs
+                    const riderIndex = window.riders.findIndex(r => r && (r.id === riderIdNum || r.id === riderId));
                     
                     if (riderIndex !== -1) {
+                        // Update existing rider
                         window.riders[riderIndex] = updatedRider;
-                        console.log('Updated rider in local riders array');
+                        console.log('Updated rider in local riders array at index', riderIndex);
                     } else {
+                        // Add new rider if not found
                         console.log('Rider not found in local riders array, adding...');
-                        window.riders.push(updatedRider);
+                        window.riders.unshift(updatedRider); // Add to the beginning of the array
                     }
+                    
+                    // Force a re-render of the riders list with the updated data
+                    await renderRiders();
                 } else {
                     throw new Error('No data returned from Supabase after update');
                 }
