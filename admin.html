@@ -4233,7 +4233,7 @@
 
                 console.log('Updating rider in database...');
                 
-                // Update existing rider
+                // Prepare update data
                 const updateData = {
                     name,
                     email,
@@ -4245,40 +4245,50 @@
                 };
                 
                 console.log('Update data being sent to Supabase:', updateData);
-                console.log('Update query: UPDATE riders SET ... WHERE id =', riderId);
 
-                // Force a more explicit update that returns the data
-                const { data: updateResult, error: updateError } = await supabase
+                // First, try update without .single() to see if any rows match
+                const { data: updateResult, error: updateError, count } = await supabase
                     .from('riders')
                     .update(updateData)
                     .eq('id', riderId)
-                    .select()
-                    .single();
+                    .select();
 
-                console.log('Update result:', { updateResult, error: updateError });
+                console.log('Update result:', { updateResult, updateError, count, rowsAffected: updateResult?.length });
 
                 if (updateError) {
                     console.error('Supabase update error:', updateError);
-                    // Check for RLS policy error
-                    if (updateError.code === '42501' || updateError.message.includes('policy')) {
-                        throw new Error('Permission denied. Please check your Row Level Security (RLS) policies for the riders table.');
+                    
+                    // Check for specific error types
+                    if (updateError.code === '42501') {
+                        throw new Error('Permission denied. Please check your Row Level Security (RLS) policies.');
                     }
+                    
+                    if (updateError.code === 'PGRST116') {
+                        throw new Error('No rows were updated. This usually means the rider ID doesn\'t exist or RLS policies are blocking the update.');
+                    }
+                    
                     throw updateError;
                 }
-
-                // If no data returned, the update failed silently (likely RLS)
-                if (!updateResult) {
-                    throw new Error('Update failed: No data returned. This usually indicates an RLS policy issue.');
-                }
-
-                // Verify the status actually changed
-                if (updateResult.status !== status) {
-                    throw new Error(`Status update failed. Current: ${updateResult.status}, Expected: ${status}. Check RLS policies.`);
-                }
-
-                console.log('Update successful, verified:', updateResult);
                 
-                // Update the local riders array with the verified data
+                // Check if any rows were actually updated
+                if (!updateResult || updateResult.length === 0) {
+                    console.error('No rows updated - likely RLS policy issue');
+                    throw new Error('Update blocked by database policies. Please check Row Level Security settings.');
+                }
+                
+                const updatedRider = updateResult[0];
+                console.log('Rider data after update:', updatedRider);
+                console.log('Status after update:', updatedRider.status);
+                
+                // Verify the status actually changed
+                if (updatedRider.status !== status) {
+                    console.error('WARNING: Status did not change!');
+                    console.error('Expected status:', status);
+                    console.error('Actual status:', updatedRider.status);
+                    throw new Error('Status update was blocked. Please check your database RLS policies.');
+                }
+                
+                // Update the local riders array
                 if (!Array.isArray(window.riders)) {
                     window.riders = [];
                 }
@@ -4287,10 +4297,10 @@
                 const riderIndex = window.riders.findIndex(r => r && (Number(r.id) === riderIdNum));
                 
                 if (riderIndex !== -1) {
-                    window.riders[riderIndex] = updateResult;
+                    window.riders[riderIndex] = updatedRider;
                     console.log('Updated rider in local array at index', riderIndex);
                 } else {
-                    window.riders.unshift(updateResult);
+                    window.riders.unshift(updatedRider);
                     console.log('Added rider to local array');
                 }
                 
@@ -4311,7 +4321,18 @@
                 
             } catch (error) {
                 console.error('Error in saveRider:', error);
-                showNotification('Error saving rider: ' + (error.message || 'Unknown error'), 'error');
+                
+                // Provide specific error messages
+                let errorMessage = 'Error saving rider: ';
+                if (error.message && error.message.includes('RLS')) {
+                    errorMessage += 'Database security policies are preventing this update. Please contact your administrator.';
+                } else if (error.code === 'PGRST116') {
+                    errorMessage += 'No rider found with this ID, or the update was blocked by security policies.';
+                } else {
+                    errorMessage += (error.message || 'Unknown error');
+                }
+                
+                showNotification(errorMessage, 'error');
             }
         }
 
