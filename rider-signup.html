@@ -573,6 +573,33 @@
                 
                 console.log('Rider profile created successfully:', riderResult);
                 
+                // 3️⃣ Send credentials email via Brevo
+                try {
+                    const params = {
+                        rider_name: name,
+                        email: email,
+                        password: password,
+                        login_url: window.location.origin + "/rider-login.html"
+                    };
+
+                    console.log("Sending rider credentials email...");
+
+                    // Uses the Brevo helper from admin.html
+                    await window.parent.sendOrderEmail(
+                        email,
+                        name,
+                        "rider-account",
+                        7,              // Template ID for Rider Credentials
+                        params
+                    );
+
+                    console.log("Credentials email sent!");
+
+                } catch (emailErr) {
+                    console.error("Error sending rider credentials email:", emailErr);
+                    showNotification("Rider created, but email failed to send.", "warning");
+                }
+                
                 // Show success message and redirect to login page
                 showNotification('Account created successfully! Please check your email to verify your account.', 'success');
                 setTimeout(() => {
