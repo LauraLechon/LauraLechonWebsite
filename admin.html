@@ -916,7 +916,7 @@
             justify-content: center;
             min-width: 90px;
             max-width: 100%;
-            padding: 5px 8px;
+            padding: 5px 8px 5px 20px;
             border-radius: 4px;
             font-weight: 500;
             font-size: 0.85rem;
@@ -924,6 +924,19 @@
             overflow: hidden;
             text-overflow: ellipsis;
             text-align: center;
+            position: relative;
+        }
+
+        #riders .rider-status::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
         }
 
         #riders .action-btns {
