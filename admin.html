@@ -887,11 +887,28 @@
         }
 
         /* Riders table specific styles */
+        #riders table {
+            table-layout: fixed;
+            width: 100%;
+        }
+        
+        #riders table th,
         #riders table td {
             vertical-align: middle !important;
             white-space: nowrap;
             padding: 8px 12px;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
+        
+        /* Set specific column widths */
+        #riders table th:nth-child(1), #riders table td:nth-child(1) { width: 15%; }  /* Name */
+        #riders table th:nth-child(2), #riders table td:nth-child(2) { width: 15%; }  /* Contact */
+        #riders table th:nth-child(3), #riders table td:nth-child(3) { width: 25%; }  /* Email */
+        #riders table th:nth-child(4), #riders table td:nth-child(4) { width: 15%; }  /* Vehicle Type */
+        #riders table th:nth-child(5), #riders table td:nth-child(5) { width: 15%; }  /* Plate Number */
+        #riders table th:nth-child(6), #riders table td:nth-child(6) { width: 10%; }  /* Status */
+        #riders table th:nth-child(7), #riders table td:nth-child(7) { width: 15%; }  /* Actions */
 
         #riders .rider-status {
             display: inline-flex;
