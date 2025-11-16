@@ -195,48 +195,6 @@
             text-align: center;
         }
         
-        form {
-            display: flex;
-            flex-direction: column;
-            gap: 18px;
-            margin-top: 15px;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .form-group label {
-            font-size: 14px;
-            font-weight: bold;
-            margin-bottom: 6px;
-        }
-
-        .form-group input,
-        .form-group select {
-            padding: 10px 12px;
-            border: 1px solid #d9d9d9;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-
-        .submit-btn {
-            margin-top: 10px;
-            padding: 12px;
-            border: none;
-            background: #1d3a6b;
-            color: white;
-            border-radius: 6px;
-            font-size: 15px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        .submit-btn:hover {
-            background: #163058;
-        }
-
         .contact-input-container input {
             border-radius: 0 5px 5px 0;
             flex: 1;
@@ -323,36 +281,59 @@
             <form id="signupForm" onsubmit="signup(event)">
                 <div class="form-group">
                     <label for="name">Full Name</label>
-                    <input type="text" id="name" placeholder="Enter full name" required />
+                    <input type="text" id="name" placeholder="Enter your full name" required>
+                    <div class="error" id="nameError">Please enter your full name</div>
                 </div>
-
+                
                 <div class="form-group">
-                    <label for="email">Email Address</label>
-                    <input type="email" id="email" placeholder="Enter rider email" required />
+                    <label for="email">Email</label>
+                    <input type="email" id="email" placeholder="Enter your email" required>
+                    <div class="error" id="emailError">Please enter a valid email</div>
                 </div>
-
+                
                 <div class="form-group">
                     <label for="contact">Contact Number</label>
-                    <input type="text" id="contact" placeholder="Enter contact number" required />
+                    <div class="contact-input-container">
+                        <div class="country-code">+63</div>
+                        <input type="tel" id="contact" placeholder="9123456789" pattern="[0-9]{10}" required>
+                    </div>
+                    <div class="error" id="contactError">Please enter a valid 10-digit contact number</div>
                 </div>
-
+                
                 <div class="form-group">
-                    <label for="vehicleType">Vehicle Type</label>
-                    <select id="vehicleType" required>
-                        <option value="">Select vehicle</option>
+                    <label for="vehicle">Vehicle Type</label>
+                    <select id="vehicle" required>
+                        <option value="">Select vehicle type</option>
                         <option value="Motorcycle">Motorcycle</option>
                         <option value="Bicycle">Bicycle</option>
                         <option value="Car">Car</option>
-                        <option value="Van">Van</option>
+                        <option value="Tricycle">Tricycle</option>
                     </select>
+                    <div class="error" id="vehicleError">Please select a vehicle type</div>
                 </div>
-
+                
                 <div class="form-group">
-                    <label for="plateNumber">Plate Number</label>
-                    <input type="text" id="plateNumber" placeholder="Enter plate number" required />
+                    <label for="plate">Plate Number</label>
+                    <input type="text" id="plate" placeholder="Enter plate number">
                 </div>
-
-                <button type="submit" class="submit-btn">Create Rider Account</button>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="Enter password" required>
+                    <i class="fas fa-eye password-toggle" id="passwordToggle"></i>
+                    <div class="error" id="passwordError">Password must be at least 6 characters</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <input type="password" id="confirmPassword" placeholder="Confirm password" required>
+                    <i class="fas fa-eye password-toggle" id="confirmPasswordToggle"></i>
+                    <div class="error" id="confirmPasswordError">Passwords do not match</div>
+                </div>
+                
+                <div class="error" id="formError"></div>
+                
+                <button type="submit" class="signup-btn">Sign Up</button>
             </form>
         </div>
     </div>
@@ -478,48 +459,70 @@
         async function signup(event) {
             event.preventDefault();
             
+            if (isSubmitting) {
+                console.warn("Signup already in progress, ignoring duplicate submit");
+                return;
+            }
+            
+            isSubmitting = true;
+            
+            // Get form values
             const name = document.getElementById('name').value.trim();
             const email = document.getElementById('email').value.trim().toLowerCase();
             const contact = document.getElementById('contact').value.trim();
-            const vehicleType = document.getElementById('vehicleType').value.trim();
-            const plateNumber = document.getElementById('plateNumber').value.trim();
-
-            // Auto-generate password
-            const password = generatePassword();
-
+            const vehicleType = document.getElementById('vehicle').value;
+            const plateNumber = document.getElementById('plate').value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
             // Show loading state
             const signupBtn = event.target.querySelector('button[type="submit"]');
             const originalBtnText = signupBtn.innerHTML;
             signupBtn.disabled = true;
             signupBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating account...';
-
-            showNotification("Creating rider account...", "info");
-
+            
             try {
-                // 1️⃣ Admin-side Supabase account creation
-                const { data: authData, error: signUpError } =
-                    await supabase.auth.admin.createUser({
-                        email: email,
-                        password: password,
-                        email_confirm: true,
-                        user_metadata: {
-                            name: name,
-                            user_type: "rider",
-                            contact: contact,
-                            vehicle_type: vehicleType,
-                            plate_number: plateNumber
-                        }
-                    });
-
+                // 1️⃣ Validate password
+                if (!password || password.length < 6) {
+                    throw new Error("Password must be at least 6 characters.");
+                }
+                
+                if (password !== confirmPassword) {
+                    throw new Error("Passwords do not match.");
+                }
+                
+                showNotification("Creating rider account...", "info");
+                
+                // Get the Supabase client
+                const supabase = getSupabaseClient();
+                if (!supabase) {
+                    throw new Error('Supabase client not available. Please refresh the page and try again.');
+                }
+                
+                // 2️⃣ Create user (NO SUPABASE EMAIL SENT)
+                console.log('Creating rider with admin.createUser...');
+                const { data: authData, error: signUpError } = await supabase.auth.admin.createUser({
+                    email: email,
+                    password: password,
+                    email_confirm: true,   // Rider email auto-confirmed
+                    user_metadata: {
+                        name: name,
+                        user_type: "rider",
+                        contact: contact,
+                        vehicle_type: vehicleType,
+                        plate_number: plateNumber
+                    }
+                });
+                
                 if (signUpError) {
                     console.error("Error during sign-up:", signUpError);
-                    showNotification(signUpError.message, "error");
-                    return;
+                    throw new Error(signUpError.message || "Failed to create user account.");
                 }
-
+                
                 console.log("Auth user created:", authData);
-
-                // 2️⃣ Rider Database Record
+                
+                // 3️⃣ Insert rider profile
+                console.log('Creating rider profile...');
                 const { data: riderResult, error: riderError } = await supabase.rpc(
                     "register_new_rider",
                     {
@@ -531,73 +534,68 @@
                         plate_number: plateNumber
                     }
                 );
-
+                
                 if (riderError) {
                     console.error("Error creating rider profile:", riderError);
-                    showNotification("Failed to create rider profile.", "error");
-                    return;
+                    throw new Error("Failed to create rider profile.");
                 }
-
+                
                 console.log("Rider profile created:", riderResult);
-
-                // 3️⃣ Send Rider Credentials Email via Brevo Template 7
+                
+                // 4️⃣ Send Welcome Email (NO PASSWORD)
                 try {
                     const params = {
                         rider_name: name,
                         email: email,
-                        password: password,
                         login_url: window.location.origin + "/rider-login.html"
                     };
-
-                    console.log("Sending Rider Credentials Email...", params);
-
+                    
+                    console.log("Sending Rider Welcome Email...");
+                    
                     await window.parent.sendOrderEmail(
                         email,
                         name,
-                        "rider-credentials",  // mapped to subject = Rider Update!
-                        7,
+                        "rider-credentials",   // Must match admin.html subject handler
+                        7,                      // Template ID 7
                         params
                     );
-
+                    
+                    console.log("Welcome email sent!");
+                    
                 } catch (emailErr) {
                     console.error("Email sending error:", emailErr);
-                    showNotification("Rider created, but email failed to send.", "warning");
+                    showNotification("Account created, but welcome email failed.", "warning");
                 }
-
-                // 4️⃣ Success message + modal close
+                
+                // 5️⃣ Final Notification + Close Modal
                 showNotification("Rider account created successfully!", "success");
-
+                
                 // Reset form
                 event.target.reset();
                 
-                // Close the modal after a short delay
-                setTimeout(() => {
-                    if (window.parent && window.parent.closeModal) {
-                        window.parent.closeModal();
-                    }
-                }, 1500);
-
-            } catch (err) {
-                console.error("Unexpected error:", err);
-                showNotification("Unexpected error occurred.", "error");
+                // Close the modal after a short delay (if opened from admin)
+                if (window.parent !== window) {
+                    setTimeout(() => {
+                        window.parent.postMessage({ type: 'CLOSE_RIDER_SIGNUP' }, '*');
+                    }, 1500);
+                } else {
+                    // If standalone, redirect to login
+                    setTimeout(() => {
+                        window.location.href = 'rider-login.html?signup=success&email=' + encodeURIComponent(email);
+                    }, 1500);
+                }
+                
+            } catch (error) {
+                console.error('Signup error:', error);
+                showNotification(error.message || 'An error occurred during signup', 'error');
             } finally {
                 // Re-enable the signup button
                 if (signupBtn) {
                     signupBtn.disabled = false;
-                    signupBtn.innerHTML = 'Create Rider Account';
+                    signupBtn.innerHTML = 'Sign Up';
                 }
+                isSubmitting = false;
             }
-        }
-        
-        // Generate a random password for the rider
-        function generatePassword() {
-            const length = 12;
-            const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+~`|}{[]\\:;\"'<>?,./-=";
-            let password = "";
-            for (let i = 0, n = charset.length; i < length; ++i) {
-                password += charset.charAt(Math.floor(Math.random() * n));
-            }
-            return password;
         }
 
         // Add form submission handler after DOM is loaded
