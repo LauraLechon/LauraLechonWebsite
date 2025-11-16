@@ -316,7 +316,7 @@
         <h1>Add New Rider</h1>
         
         <div class="container">
-            <form id="signupForm">
+            <form id="signupForm" onsubmit="signup(event)">
                 <div class="form-group">
                     <label for="name">Full Name</label>
                     <input type="text" id="name" placeholder="Enter your full name" required>
@@ -405,28 +405,23 @@
 
         // Function to open password confirmation modal
         function openPasswordEmailModal(event) {
-            // Prevent the default form submission
-            if (event) {
-                event.preventDefault();
-                event.stopPropagation();
-            }
+            event.preventDefault();
             
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
             
             if (password !== confirmPassword) {
                 showNotification("Passwords do not match.", "error");
-                return false;
+                return;
             }
             
             if (password.length < 6) {
                 showNotification("Password must be at least 6 characters.", "error");
-                return false;
+                return;
             }
             
             document.getElementById('emailPasswordField').value = password;
             document.getElementById('passwordEmailModal').style.display = 'flex';
-            return false;
         }
         
         // Simplified initialization for the rider signup form
@@ -476,10 +471,7 @@
                 // Set up form submission
                 const signupForm = document.getElementById('signupForm');
                 if (signupForm) {
-                    signupForm.addEventListener('submit', function(e) {
-                        e.preventDefault();
-                        openPasswordEmailModal(e);
-                    });
+                    signupForm.addEventListener('submit', openPasswordEmailModal);
                     console.log('Form submission handler attached');
                 }
                 
