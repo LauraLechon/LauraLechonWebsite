@@ -456,7 +456,7 @@
             throw new Error('Supabase client not found. Please ensure the application is properly loaded.');
         }
 
-        async function signup(event) {
+        async function signup(event, emailPassword) {
             event.preventDefault();
             
             if (isSubmitting) {
@@ -543,16 +543,16 @@
                 
                 console.log("Rider profile created:", riderResult);
                 
-                // 4️⃣ Send Welcome Email (NO PASSWORD)
+                // 3️⃣ Send Welcome Email with Password
                 try {
                     const params = {
                         rider_name: name,
                         email: email,
+                        password: emailPassword,   // Include the password in the email
                         login_url: window.location.origin + "/rider-login.html"
                     };
-                    
-                    console.log("Sending Rider Welcome Email...");
-                    
+
+                    console.log("Sending rider welcome email...");
                     await window.parent.sendOrderEmail(
                         email,
                         name,
@@ -562,10 +562,9 @@
                     );
                     
                     console.log("Welcome email sent!");
-                    
                 } catch (emailErr) {
-                    console.error("Email sending error:", emailErr);
-                    showNotification("Account created, but welcome email failed.", "warning");
+                    console.error("Error sending welcome email:", emailErr);
+                    showNotification("Account created, but failed to send welcome email.", "warning");
                 }
                 
                 // 5️⃣ Final Notification + Close Modal
@@ -599,12 +598,58 @@
             }
         }
 
+        // Function to open password confirmation modal
+        function openPasswordEmailModal(event) {
+            event.preventDefault();
+            
+            const password = document.getElementById('password').value.trim();
+            const confirmPassword = document.getElementById('confirmPassword').value.trim();
+
+            if (!password) {
+                showNotification("Please enter a password.", "error");
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                showNotification("Passwords do not match.", "error");
+                return;
+            }
+
+            document.getElementById('emailPasswordField').value = password;
+            document.getElementById('passwordEmailModal').classList.remove('hidden');
+        }
+
         // Add form submission handler after DOM is loaded
         document.addEventListener('DOMContentLoaded', () => {
             const signupForm = document.getElementById('signupForm');
             if (signupForm) {
-                signupForm.addEventListener('submit', signup);
+                signupForm.addEventListener('submit', openPasswordEmailModal);
             }
+
+            // Modal event listeners
+            document.getElementById('confirmPasswordBtn').addEventListener('click', () => {
+                const password = document.getElementById('emailPasswordField').value;
+                document.getElementById('passwordEmailModal').classList.add('hidden');
+                signup({ target: signupForm }, password);
+            });
+
+            document.getElementById('cancelPasswordBtn').addEventListener('click', () => {
+                document.getElementById('passwordEmailModal').classList.add('hidden');
+                const signupBtn = document.querySelector('#signupForm button[type="submit"]');
+                if (signupBtn) {
+                    signupBtn.disabled = false;
+                    signupBtn.innerHTML = 'Sign Up';
+                }
+            });
+
+            document.querySelector('.close-modal').addEventListener('click', () => {
+                document.getElementById('passwordEmailModal').classList.add('hidden');
+                const signupBtn = document.querySelector('#signupForm button[type="submit"]');
+                if (signupBtn) {
+                    signupBtn.disabled = false;
+                    signupBtn.innerHTML = 'Sign Up';
+                }
+            });
         });
         
         // Real-time password match validation
@@ -649,5 +694,104 @@
             this.classList.toggle('fa-eye-slash');
         });
     </script>
+
+    <!-- Password Confirmation Modal -->
+    <div id="passwordEmailModal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Password Confirmation</h2>
+            <p>This password will be included in the Rider Credentials Email:</p>
+            <input type="text" id="emailPasswordField" class="modal-input" readonly />
+            <div class="modal-buttons">
+                <button id="cancelPasswordBtn" class="btn btn-secondary">Cancel</button>
+                <button id="confirmPasswordBtn" class="btn btn-primary">Confirm & Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+
+        .modal h2 {
+            margin-top: 0;
+            color: var(--primary-color);
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+
+        .close-modal {
+            position: absolute;
+            right: 20px;
+            top: 15px;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
 </body>
 </html>
