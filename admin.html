@@ -5867,6 +5867,12 @@
                 });
 
                 // Prepare the email data
+                // Determine the email subject based on the template type
+                let subject = `Order Update - #${orderId}`;
+                if (orderId === "rider-credentials") {
+                    subject = "Rider Update!";
+                }
+
                 const emailData = {
                     sender: {
                         name: "Laura's Lechon",
@@ -5876,7 +5882,7 @@
                         email: email,
                         name: name
                     }],
-                    subject: `Order Update - #${orderId}`,
+                    subject: subject,
                     templateId: parseInt(templateId),
                     params: templateParams
                 };
