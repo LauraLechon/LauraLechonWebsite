@@ -405,23 +405,28 @@
 
         // Function to open password confirmation modal
         function openPasswordEmailModal(event) {
-            event.preventDefault();
+            // Prevent the default form submission
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
             
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
             
             if (password !== confirmPassword) {
                 showNotification("Passwords do not match.", "error");
-                return;
+                return false;
             }
             
             if (password.length < 6) {
                 showNotification("Password must be at least 6 characters.", "error");
-                return;
+                return false;
             }
             
             document.getElementById('emailPasswordField').value = password;
             document.getElementById('passwordEmailModal').style.display = 'flex';
+            return false;
         }
         
         // Simplified initialization for the rider signup form
@@ -471,7 +476,10 @@
                 // Set up form submission
                 const signupForm = document.getElementById('signupForm');
                 if (signupForm) {
-                    signupForm.addEventListener('submit', openPasswordEmailModal);
+                    signupForm.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        openPasswordEmailModal(e);
+                    });
                     console.log('Form submission handler attached');
                 }
                 
