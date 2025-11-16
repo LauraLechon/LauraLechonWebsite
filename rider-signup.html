@@ -499,18 +499,19 @@
                     throw new Error('Supabase client not available. Please refresh the page and try again.');
                 }
                 
-                // 2️⃣ Create user (NO SUPABASE EMAIL SENT)
-                console.log('Creating rider with admin.createUser...');
-                const { data: authData, error: signUpError } = await supabase.auth.admin.createUser({
+                // 2️⃣ Sign up the user with standard flow
+                console.log('Signing up rider...');
+                const { data: authData, error: signUpError } = await supabase.auth.signUp({
                     email: email,
                     password: password,
-                    email_confirm: true,   // Rider email auto-confirmed
-                    user_metadata: {
-                        name: name,
-                        user_type: "rider",
-                        contact: contact,
-                        vehicle_type: vehicleType,
-                        plate_number: plateNumber
+                    options: {
+                        data: {
+                            name: name,
+                            user_type: "rider",
+                            contact: contact,
+                            vehicle_type: vehicleType,
+                            plate_number: plateNumber
+                        }
                     }
                 });
                 
@@ -526,12 +527,12 @@
                 const { data: riderResult, error: riderError } = await supabase.rpc(
                     "register_new_rider",
                     {
-                        rider_id: authData.user.id,
-                        rider_name: name,
-                        rider_email: email,
-                        rider_contact: contact,
-                        vehicle_type: vehicleType,
-                        plate_number: plateNumber
+                        p_name: name,
+                        p_email: email,
+                        p_contact: contact,
+                        p_vehicle_type: vehicleType,
+                        p_plate_number: plateNumber || '',
+                        p_auth_user_id: authData.user.id
                     }
                 );
                 
