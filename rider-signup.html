@@ -526,12 +526,12 @@
                 console.log('Creating rider profile...');
                 const { data: riderResult, error: riderError } = await supabase
                     .rpc('create_rider_profile', {
-                        p_auth_user_id: authData.user.id,
                         p_name: name,
-                        p_email: email,
                         p_contact: contact,
-                        p_vehicle_type: vehicleType,
-                        p_plate_number: plateNumber || ''
+                        p_email: email,
+                        p_plate_number: plateNumber || '',
+                        p_status: 'Pending',
+                        p_vehicle_type: vehicleType
                     });
                 
                 if (riderError) {
