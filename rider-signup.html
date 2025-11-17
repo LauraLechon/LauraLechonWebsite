@@ -625,32 +625,37 @@
                 console.log('Creating rider profile...');
                 
                 try {
-                    // Call the RPC function to create rider profile
-                    const { data: rpcResponse, error: rpcError } = await supabase.rpc('register_new_rider', { 
-                        p_name: name,
-                        p_email: email,
-                        p_contact: contact,
-                        p_vehicle_type: vehicleType,
-                        p_plate_number: plateNumber || '',
-                        p_auth_user_id: user.id,
-                        p_status: 'Inactive'  // Set initial status to Inactive
-                    });
+                    // Directly insert into the riders table
+                    const { data: riderData, error: insertError } = await supabase
+                        .from('riders')
+                        .insert([{
+                            name: name,
+                            email: email,
+                            contact: contact,
+                            vehicle_type: vehicleType,
+                            plate_number: plateNumber || '',
+                            auth_user_id: user.id,
+                            status: 'Inactive',
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString()
+                        }])
+                        .select();
                     
-                    if (rpcError) {
-                        console.error("RPC Error:", rpcError);
-                        throw new Error("Failed to create rider profile. The server function might not be properly set up.");
+                    if (insertError) {
+                        console.error("Insert Error:", insertError);
+                        throw new Error(`Failed to create rider profile: ${insertError.message}`);
                     }
                     
-                    console.log("RPC Response:", rpcCheck);
+                    console.log("Rider created successfully:", riderData);
                     
                     // Verify the rider was actually created
-                    const { data: riderData, error: fetchError } = await supabase
+                    const { data: verifiedRiderData, error: fetchError } = await supabase
                         .from('riders')
                         .select('*')
                         .eq('email', email)
                         .single();
                         
-                    if (fetchError || !riderData) {
+                    if (fetchError || !verifiedRiderData) {
                         console.error("Failed to verify rider creation:", fetchError);
                         throw new Error("Rider account was not created in the database. Please contact support.");
                     }
