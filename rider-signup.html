@@ -215,6 +215,25 @@
         .password-notice strong {
             color: #1d3a6b;
         }
+
+        .password-toggle {
+            position: absolute;
+            right: 10px;
+            top: 38px;
+            cursor: pointer;
+            color: #666;
+            transition: color 0.3s ease;
+        }
+
+        .password-toggle:hover {
+            color: var(--primary-color);
+        }
+
+        .password-hint {
+            font-size: 0.75rem;
+            color: #666;
+            margin-top: 0.25rem;
+        }
         
         @media (max-width: 480px) {
             .signup-container {
@@ -233,11 +252,6 @@
         <button class="close-btn" id="closeBtn">&times;</button>
         <img src="adminlogo.png" alt="Laura Lechon Logo" class="logo">
         <h1>Add New Rider</h1>
-        
-        <div class="password-notice">
-            <strong>Note:</strong> All riders will receive a default password: <strong>123456</strong>
-            <br>They can change it after their first login.
-        </div>
         
         <div class="container">
             <form id="signupForm" onsubmit="signup(event)">
@@ -279,6 +293,21 @@
                     <input type="text" id="plate" placeholder="Enter plate number">
                 </div>
                 
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="Enter password" required value="123456">
+                    <i class="fas fa-eye password-toggle" id="passwordToggle"></i>
+                    <div class="error" id="passwordError">Password must be at least 6 characters</div>
+                    <div class="password-hint">Default: 123456 (included in email)</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <input type="password" id="confirmPassword" placeholder="Confirm password" required value="123456">
+                    <i class="fas fa-eye password-toggle" id="confirmPasswordToggle"></i>
+                    <div class="error" id="confirmPasswordError">Passwords do not match</div>
+                </div>
+                
                 <div class="error" id="formError"></div>
                 
                 <button type="submit" class="signup-btn">Create Rider Account</button>
@@ -291,9 +320,6 @@
     <script>
         // Global flag to prevent duplicate submissions
         let isSubmitting = false;
-        
-        // Default password for all riders
-        const DEFAULT_PASSWORD = '123456';
 
         // Initialize on DOM load
         document.addEventListener('DOMContentLoaded', async () => {
@@ -311,6 +337,36 @@
 
             // Wait for Supabase
             await waitForSupabase();
+            
+            // Password toggle handlers
+            document.getElementById('passwordToggle').addEventListener('click', function() {
+                const passwordInput = document.getElementById('password');
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+                this.classList.toggle('fa-eye');
+                this.classList.toggle('fa-eye-slash');
+            });
+
+            document.getElementById('confirmPasswordToggle').addEventListener('click', function() {
+                const passwordInput = document.getElementById('confirmPassword');
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+                this.classList.toggle('fa-eye');
+                this.classList.toggle('fa-eye-slash');
+            });
+
+            // Real-time password match validation
+            document.getElementById('confirmPassword').addEventListener('input', function() {
+                const password = document.getElementById('password').value;
+                const confirmPassword = this.value;
+                const error = document.getElementById('confirmPasswordError');
+                
+                if (password !== confirmPassword) {
+                    error.style.display = 'block';
+                } else {
+                    error.style.display = 'none';
+                }
+            });
             
             // Clear errors on input
             document.querySelectorAll('input, select').forEach(element => {
@@ -407,6 +463,8 @@
             const contact = document.getElementById('contact').value.trim();
             const vehicleType = document.getElementById('vehicle').value;
             const plateNumber = document.getElementById('plate').value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
             
             // Get button and show loading state
             const signupBtn = event.target.querySelector('button[type="submit"]');
@@ -423,16 +481,24 @@
                     throw new Error("Contact number must be exactly 10 digits");
                 }
 
+                if (password.length < 6) {
+                    throw new Error("Password must be at least 6 characters");
+                }
+
+                if (password !== confirmPassword) {
+                    throw new Error("Passwords do not match");
+                }
+
                 showNotification("Creating rider account...", "info");
                 
                 // Get Supabase client
                 const supabase = getSupabaseClient();
                 
-                // 1. Create auth user with default password
+                // 1. Create auth user with the entered password
                 console.log('Creating auth user...');
                 const { data: authData, error: signUpError } = await supabase.auth.signUp({
                     email: email,
-                    password: DEFAULT_PASSWORD,
+                    password: password,
                     options: {
                         data: {
                             name: name,
@@ -472,7 +538,7 @@
                 
                 console.log("Rider profile created successfully");
                 
-                // 3. Send welcome email
+                // 3. Send welcome email (password will be shown as 123456 in template)
                 try {
                     console.log("Sending welcome email...");
                     
@@ -506,6 +572,9 @@
                 
                 // Reset form
                 event.target.reset();
+                // Re-set default password values
+                document.getElementById('password').value = '123456';
+                document.getElementById('confirmPassword').value = '123456';
                 
                 // Close modal after delay
                 setTimeout(() => {
