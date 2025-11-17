@@ -269,44 +269,6 @@
         .modal-btn:hover {
             background: var(--primary-hover);
         }
-        .hidden {
-            display: none !important;
-        }
-        
-        #passwordEmailModal .modal-content {
-            max-width: 400px;
-            padding: 2rem;
-            text-align: center;
-        }
-        
-        #passwordEmailModal h2 {
-            color: var(--primary-color);
-            margin-bottom: 1rem;
-        }
-        
-        #emailPasswordField {
-            width: 100%;
-            padding: 0.75rem;
-            margin: 1rem 0;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            font-size: 1rem;
-        }
-        
-        #confirmPasswordEmailBtn {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 0.75rem 1.5rem;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: background-color 0.3s;
-        }
-        
-        #confirmPasswordEmailBtn:hover {
-            background-color: var(--primary-hover);
-        }
     </style>
 </head>
 <body>
@@ -316,7 +278,7 @@
         <h1>Add New Rider</h1>
         
         <div class="container">
-            <form id="signupForm">
+            <form id="signupForm" onsubmit="signup(event)">
                 <div class="form-group">
                     <label for="name">Full Name</label>
                     <input type="text" id="name" placeholder="Enter your full name" required>
@@ -376,16 +338,6 @@
         </div>
     </div>
 
-    <!-- Password Confirmation Modal -->
-    <div id="passwordEmailModal" class="modal hidden">
-        <div class="modal-content">
-            <h2>Password Confirmation</h2>
-            <p>This password will be included in the Rider Credentials Email:</p>
-            <input type="text" id="emailPasswordField" readonly />
-            <button id="confirmPasswordEmailBtn" class="modal-btn">Confirm & Continue</button>
-        </div>
-    </div>
-
     <script>
         // Add notification container
         const notificationContainer = document.createElement('div');
@@ -403,27 +355,6 @@
             }, 2000);
         }
 
-        // Function to open password confirmation modal
-        function openPasswordEmailModal(event) {
-            event.preventDefault();
-            
-            const password = document.getElementById('password').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
-            
-            if (password !== confirmPassword) {
-                showNotification("Passwords do not match.", "error");
-                return;
-            }
-            
-            if (password.length < 6) {
-                showNotification("Password must be at least 6 characters.", "error");
-                return;
-            }
-            
-            document.getElementById('emailPasswordField').value = password;
-            document.getElementById('passwordEmailModal').style.display = 'flex';
-        }
-        
         // Simplified initialization for the rider signup form
         document.addEventListener('DOMContentLoaded', async () => {
             console.log('DOMContentLoaded event fired');
@@ -467,27 +398,6 @@
             try {
                 await waitForSupabase();
                 console.log('Supabase client is ready, form ready for use');
-                
-                // Set up form submission
-                const signupForm = document.getElementById('signupForm');
-                if (signupForm) {
-                    signupForm.addEventListener('submit', (e) => {
-                        e.preventDefault();
-                        signup(e);
-                    });
-                    console.log('Form submission handler attached');
-                }
-                
-                // Close modal when clicking outside
-                const modal = document.getElementById('passwordEmailModal');
-                if (modal) {
-                    modal.addEventListener('click', function(e) {
-                        if (e.target === this) {
-                            this.style.display = 'none';
-                        }
-                    });
-                }
-                
             } catch (err) {
                 console.error('Error during initialization:', err);
                 showNotification('Failed to initialize. Please refresh the page.', 'error');
@@ -546,14 +456,14 @@
             throw new Error('Supabase client not found. Please ensure the application is properly loaded.');
         }
 
-        async function signup(event, emailPassword = '') {
+        async function signup(event) {
             event.preventDefault();
-            
+
             if (isSubmitting) {
                 console.warn("Signup already in progress, ignoring duplicate submit");
                 return;
             }
-            
+
             isSubmitting = true;
             
             // Get form values
@@ -562,42 +472,66 @@
             const contact = document.getElementById('contact').value.trim();
             const vehicleType = document.getElementById('vehicle').value;
             const plateNumber = document.getElementById('plate').value.trim();
-            const password = emailPassword || document.getElementById('password').value;
-            const confirmPassword = emailPassword || document.getElementById('confirmPassword').value;
-            
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
             // Show loading state
             const signupBtn = event.target.querySelector('button[type="submit"]');
             const originalBtnText = signupBtn.innerHTML;
             signupBtn.disabled = true;
             signupBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating account...';
-            
+
             try {
-                // 1️⃣ Validate password
-                if (!password || password.length < 6) {
-                    throw new Error("Password must be at least 6 characters.");
-                }
-                
-                if (password !== confirmPassword) {
-                    throw new Error("Passwords do not match.");
-                }
-                
-                showNotification("Creating rider account...", "info");
-                
-                // Get the Supabase client
+                // Get the appropriate Supabase client
                 const supabase = getSupabaseClient();
+                
+                // Check if we have a valid client
                 if (!supabase) {
                     throw new Error('Supabase client not available. Please refresh the page and try again.');
                 }
                 
-                // 2️⃣ Sign up the user with standard flow
-                console.log('Signing up rider...');
+                // Log debug information
+                console.log('Supabase client initialized:', !!supabase);
+                console.log('Has auth module:', !!supabase.auth);
+                console.log('Has admin module:', !!supabase.auth?.admin);
+                
+                // Check if we're running in admin context
+                const isAdminContext = window.self !== window.top;
+
+                // Clear previous errors
+                document.querySelectorAll('.error').forEach(el => el.style.display = 'none');
+
+                // Validate form
+                if (!name || !email || !contact || !vehicleType || !password || !confirmPassword) {
+                    throw new Error('Please fill in all required fields');
+                }
+
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                    throw new Error('Please enter a valid email address');
+                }
+
+                if (password !== confirmPassword) {
+                    throw new Error('Passwords do not match');
+                }
+
+                if (password.length < 6) {
+                    throw new Error('Password must be at least 6 characters long');
+                }
+
+                console.log('Starting signup process...');
+
+                // Use standard signup flow (works for both admin and non-admin contexts)
+                console.log('Using standard signup flow');
+                
+                // 2️⃣ First sign up the user with Supabase Auth
+                console.log('Signing up with Supabase Auth...');
                 const { data: authData, error: signUpError } = await supabase.auth.signUp({
                     email: email,
                     password: password,
                     options: {
                         data: {
                             name: name,
-                            user_type: "rider",
+                            user_type: 'rider',
                             contact: contact,
                             vehicle_type: vehicleType,
                             plate_number: plateNumber
@@ -606,129 +540,76 @@
                 });
                 
                 if (signUpError) {
-                    console.error("Error during sign-up:", signUpError);
-                    throw new Error(signUpError.message || "Failed to create user account.");
+                    console.error('Error signing up:', signUpError);
+                    throw new Error('Failed to create user account. ' + (signUpError.message || 'Please try again.'));
                 }
                 
-                console.log("Auth user created:", authData);
+                const authUser = authData.user;
+                console.log('Auth user created:', authUser);
                 
-                // Use the user from authData instead of making another auth call
-                if (!authData.user) {
-                    console.error("No user data in auth response");
-                    throw new Error("Failed to create user account. Please try again.");
+                // 2️⃣ Create rider profile using the secure database function
+                console.log('Creating rider profile via database function...');
+                const { data: riderResult, error: createRiderError } = await supabase
+                    .rpc('register_new_rider', {
+                        p_name: name,
+                        p_email: email,
+                        p_contact: contact,
+                        p_vehicle_type: vehicleType,
+                        p_plate_number: plateNumber || '',
+                        p_auth_user_id: authUser.id
+                    });
+                    
+                if (createRiderError) {
+                    console.error('Error calling register_new_rider function:', createRiderError);
+                    throw new Error('Failed to create rider profile. ' + (createRiderError.message || 'Please try again.'));
                 }
                 
-                const user = authData.user;
-                console.log("Using auth user from signup response:", user);
-                
-                // Add a small delay to ensure the user is fully committed to the database
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
-                // 3️⃣ Insert rider profile
-                console.log('Creating rider profile...');
-                
-                // Retry mechanism for rider profile creation
-                let retryCount = 0;
-                const maxRetries = 3;
-                let insertError;
-                let riderData;
-                
-                while (retryCount < maxRetries) {
-                    try {
-                        // Directly insert into the riders table
-                        const result = await supabase
-                            .from('riders')
-                            .insert([{
-                                name: name,
-                                email: email,
-                                contact: contact,
-                                vehicle_type: vehicleType,
-                                plate_number: plateNumber || '',
-                                auth_user_id: user.id,
-                                status: 'Inactive',
-                                created_at: new Date().toISOString(),
-                                updated_at: new Date().toISOString()
-                            }])
-                            .select();
-                            
-                        insertError = result.error;
-                        riderData = result.data;
-                        
-                        if (!insertError) {
-                            // Success - exit the retry loop
-                            console.log("Rider created successfully:", riderData);
-                            break;
-                        }
-                        
-                        // If we get a foreign key violation, wait and retry
-                        if (insertError.code === '23503') {
-                            console.log(`Retry ${retryCount + 1}: Waiting for user to be committed...`);
-                            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
-                            retryCount++;
-                            
-                            // If we've reached max retries, throw the error
-                            if (retryCount >= maxRetries) {
-                                console.error("Max retries reached. Last error:", insertError);
-                                throw new Error(`Failed to create rider profile after ${maxRetries} attempts: ${insertError.message}`);
-                            }
-                        } else {
-                            // For other errors, throw immediately
-                            throw insertError;
-                        }
-                    } catch (err) {
-                        console.error("Error in rider creation attempt:", err);
-                        throw new Error(`Failed to create rider profile: ${err.message}`);
-                    }
-                }
-                    
-                    console.log("Rider created successfully:", riderData);
-                    
-                    // Verify the rider was actually created
-                    const { data: verifiedRiderData, error: fetchError } = await supabase
-                        .from('riders')
-                        .select('*')
-                        .eq('email', email)
-                        .single();
-                        
-                    if (fetchError || !verifiedRiderData) {
-                        console.error("Failed to verify rider creation:", fetchError);
-                        throw new Error("Rider account was not created in the database. Please contact support.");
-                    }
-                    
-                    console.log("Verified rider in database:", riderData);
-                    
-                } catch (rpcError) {
-                    console.error("Error in rider creation process:", rpcError);
-                    throw new Error(`Failed to create rider: ${rpcError.message || 'Unknown error'}`);
+                // Check if the function returned an error
+                if (riderResult && !riderResult.success) {
+                    console.error('Function returned error:', riderResult.error);
+                    throw new Error(riderResult.error || 'Failed to create rider profile');
                 }
                 
-                // 4️⃣ Send Welcome Email (NO PASSWORD)
+                console.log('Rider profile created successfully:', riderResult);
+                
+                // 3️⃣ Send credentials email via Brevo
                 try {
                     const params = {
                         rider_name: name,
                         email: email,
+                        password: password,
                         login_url: window.location.origin + "/rider-login.html"
                     };
-                    
-                    console.log("Sending Rider Welcome Email...");
-                    
+
+                    console.log("Sending rider credentials email...");
+
+                    // Uses the Brevo helper from admin.html
                     await window.parent.sendOrderEmail(
                         email,
                         name,
-                        "rider-credentials",   // Must match admin.html subject handler
-                        7,                      // Template ID 7
+                        "rider-account",
+                        7,              // Template ID for Rider Credentials
                         params
                     );
-                    
-                    console.log("Welcome email sent!");
-                    
+
+                    console.log("Credentials email sent!");
+
                 } catch (emailErr) {
-                    console.error("Email sending error:", emailErr);
-                    showNotification("Account created, but welcome email failed.", "warning");
+                    console.error("Error sending rider credentials email:", emailErr);
+                    showNotification("Rider created, but email failed to send.", "warning");
                 }
                 
-                // 5️⃣ Final Notification + Close Modal
-                showNotification("Rider account created successfully!", "success");
+                // Show success message and redirect to login page
+                showNotification('Account created successfully! Please check your email to verify your account.', 'success');
+                setTimeout(() => {
+                    window.location.href = 'rider-login.html?signup=success&email=' + encodeURIComponent(email);
+                }, 3000);
+                
+                // If we get here, the signup was successful
+                console.log('Rider setup completed successfully');
+                
+                // Show success message
+                showNotification('Rider account created successfully!', 'success');
                 
                 // Reset form
                 event.target.reset();
@@ -737,12 +618,12 @@
                 if (window.parent !== window) {
                     setTimeout(() => {
                         window.parent.postMessage({ type: 'CLOSE_RIDER_SIGNUP' }, '*');
-                    }, 1500);
+                    }, 2000);
                 } else {
                     // If standalone, redirect to login
                     setTimeout(() => {
                         window.location.href = 'rider-login.html?signup=success&email=' + encodeURIComponent(email);
-                    }, 1500);
+                    }, 2000);
                 }
                 
             } catch (error) {
@@ -758,6 +639,13 @@
             }
         }
 
+        // Add form submission handler after DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            const signupForm = document.getElementById('signupForm');
+            if (signupForm) {
+                signupForm.addEventListener('submit', signup);
+            }
+        });
         
         // Real-time password match validation
         document.getElementById('confirmPassword').addEventListener('input', function() {
