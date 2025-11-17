@@ -8,18 +8,8 @@
     <link rel="icon" type="image/x-icon" href="adminlogo.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <!-- Load Supabase SDK first -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- Then load our config that initializes the client -->
     <script src="supabase-config.js"></script>
-    <script>
-        // Close the modal when clicking outside the content
-        document.addEventListener('click', function(event) {
-            if (event.target.classList.contains('modal')) {
-                window.parent.postMessage({ type: 'CLOSE_RIDER_SIGNUP' }, '*');
-            }
-        });
-    </script>
     <style>
         :root {
             --primary-color: #1d3a6b;
@@ -126,30 +116,18 @@
             margin-top: 0.5rem;
         }
         
-        .signup-btn:hover {
+        .signup-btn:hover:not(:disabled) {
             background: var(--primary-hover);
             transform: translateY(-1px);
         }
         
+        .signup-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
         .signup-btn:active {
             transform: translateY(0);
-        }
-        
-        .login-link {
-            margin-top: 1.5rem;
-            color: #666;
-            font-size: 0.875rem;
-        }
-        
-        .login-link a {
-            color: var(--primary-color);
-            text-decoration: none;
-            font-weight: 500;
-            transition: color 0.3s ease;
-        }
-        
-        .login-link a:hover {
-            text-decoration: underline;
         }
         
         .error {
@@ -157,23 +135,6 @@
             margin-top: 0.25rem;
             font-size: 0.875rem;
             display: none;
-        }
-        
-        .password-hint {
-            font-size: 0.75rem;
-            color: #666;
-            margin-top: 0.25rem;
-        }
-        
-        @media (max-width: 480px) {
-            .signup-container {
-                padding: 1.5rem;
-            }
-            
-            h1 {
-                font-size: 1.25rem;
-                margin-bottom: 1.25rem;
-            }
         }
         
         .contact-input-container {
@@ -199,113 +160,71 @@
             border-radius: 0 5px 5px 0;
             flex: 1;
         }
-        
-        .password-toggle {
-            position: absolute;
-            right: 10px;
-            top: 38px;
-            cursor: pointer;
-            color: #666;
-            transition: color 0.3s ease;
-        }
-        
-        .password-toggle:hover {
-            color: var(--primary-color);
-        }
-        
-        /* Modal Styles */
-        .modal {
-            display: none;
+
+        .notification-container {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .modal-content {
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            max-width: 500px;
-            width: 90%;
-            text-align: center;
-        }
-        
-        .modal-header {
-            margin-bottom: 1rem;
-        }
-        
-        .modal-title {
-            color: var(--primary-color);
-            margin: 0;
-        }
-        
-        .modal-body {
-            margin-bottom: 1.5rem;
-            line-height: 1.5;
-        }
-        
-        .modal-footer {
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
             display: flex;
-            justify-content: center;
-            gap: 1rem;
+            flex-direction: column;
+            gap: 10px;
         }
-        
-        .modal-btn {
-            padding: 0.5rem 1.5rem;
-            background: var(--primary-color);
+
+        .notification {
+            padding: 15px 20px;
+            border-radius: 8px;
             color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        
-        .modal-btn:hover {
-            background: var(--primary-hover);
-        }
-        .hidden {
-            display: none !important;
-        }
-        
-        #passwordEmailModal .modal-content {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 300px;
             max-width: 400px;
-            padding: 2rem;
-            text-align: center;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+        }
+
+        .notification.success {
+            background-color: #2ecc71;
+        }
+
+        .notification.error {
+            background-color: #e74c3c;
+        }
+
+        .notification.warning {
+            background-color: #f39c12;
+        }
+
+        .notification.info {
+            background-color: #3498db;
+        }
+
+        .password-notice {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 15px 0;
+            font-size: 0.875rem;
+            color: #856404;
+        }
+
+        .password-notice strong {
+            color: #1d3a6b;
         }
         
-        #passwordEmailModal h2 {
-            color: var(--primary-color);
-            margin-bottom: 1rem;
-        }
-        
-        #emailPasswordField {
-            width: 100%;
-            padding: 0.75rem;
-            margin: 1rem 0;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            font-size: 1rem;
-        }
-        
-        #confirmPasswordEmailBtn {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 0.75rem 1.5rem;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: background-color 0.3s;
-        }
-        
-        #confirmPasswordEmailBtn:hover {
-            background-color: var(--primary-hover);
+        @media (max-width: 480px) {
+            .signup-container {
+                padding: 1.5rem;
+            }
+            
+            h1 {
+                font-size: 1.25rem;
+                margin-bottom: 1.25rem;
+            }
         }
     </style>
 </head>
@@ -315,17 +234,22 @@
         <img src="adminlogo.png" alt="Laura Lechon Logo" class="logo">
         <h1>Add New Rider</h1>
         
+        <div class="password-notice">
+            <strong>Note:</strong> All riders will receive a default password: <strong>123456</strong>
+            <br>They can change it after their first login.
+        </div>
+        
         <div class="container">
             <form id="signupForm" onsubmit="signup(event)">
                 <div class="form-group">
                     <label for="name">Full Name</label>
-                    <input type="text" id="name" placeholder="Enter your full name" required>
-                    <div class="error" id="nameError">Please enter your full name</div>
+                    <input type="text" id="name" placeholder="Enter full name" required>
+                    <div class="error" id="nameError">Please enter full name</div>
                 </div>
                 
                 <div class="form-group">
                     <label for="email">Email</label>
-                    <input type="email" id="email" placeholder="Enter your email" required>
+                    <input type="email" id="email" placeholder="Enter email address" required>
                     <div class="error" id="emailError">Please enter a valid email</div>
                 </div>
                 
@@ -335,7 +259,7 @@
                         <div class="country-code">+63</div>
                         <input type="tel" id="contact" placeholder="9123456789" pattern="[0-9]{10}" required>
                     </div>
-                    <div class="error" id="contactError">Please enter a valid 10-digit contact number</div>
+                    <div class="error" id="contactError">Please enter a valid 10-digit number</div>
                 </div>
                 
                 <div class="form-group">
@@ -351,159 +275,91 @@
                 </div>
                 
                 <div class="form-group">
-                    <label for="plate">Plate Number</label>
+                    <label for="plate">Plate Number (Optional)</label>
                     <input type="text" id="plate" placeholder="Enter plate number">
-                </div>
-                
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" placeholder="Enter password" required>
-                    <i class="fas fa-eye password-toggle" id="passwordToggle"></i>
-                    <div class="error" id="passwordError">Password must be at least 6 characters</div>
-                </div>
-                
-                <div class="form-group">
-                    <label for="confirmPassword">Confirm Password</label>
-                    <input type="password" id="confirmPassword" placeholder="Confirm password" required>
-                    <i class="fas fa-eye password-toggle" id="confirmPasswordToggle"></i>
-                    <div class="error" id="confirmPasswordError">Passwords do not match</div>
                 </div>
                 
                 <div class="error" id="formError"></div>
                 
-                <button type="submit" class="signup-btn">Sign Up</button>
+                <button type="submit" class="signup-btn">Create Rider Account</button>
             </form>
         </div>
     </div>
 
-    <!-- Password Confirmation Modal -->
-    <div id="passwordEmailModal" class="modal hidden">
-        <div class="modal-content">
-            <h2>Password Confirmation</h2>
-            <p>This password will be included in the Rider Credentials Email:</p>
-            <input type="text" id="emailPasswordField" readonly />
-            <button id="confirmPasswordEmailBtn" class="modal-btn">Confirm & Continue</button>
-        </div>
-    </div>
+    <div class="notification-container" id="notificationContainer"></div>
 
     <script>
-        // Add notification container
-        const notificationContainer = document.createElement('div');
-        notificationContainer.className = 'notification-container';
-        document.body.appendChild(notificationContainer);
-
-        // Function to show error and close
-        function showErrorAndClose(message) {
-            showNotification(message, 'error');
-            setTimeout(() => {
-                // Only try to close if we're in an iframe
-                if (window.self !== window.top) {
-                    window.parent.postMessage({ type: 'CLOSE_RIDER_SIGNUP' }, '*');
-                }
-            }, 2000);
-        }
-
-        // Function to open password confirmation modal
-        function openPasswordEmailModal(event) {
-            event.preventDefault();
-            
-            const password = document.getElementById('password').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
-            
-            if (password !== confirmPassword) {
-                showNotification("Passwords do not match.", "error");
-                return;
-            }
-            
-            if (password.length < 6) {
-                showNotification("Password must be at least 6 characters.", "error");
-                return;
-            }
-            
-            document.getElementById('emailPasswordField').value = password;
-            document.getElementById('passwordEmailModal').style.display = 'flex';
-        }
+        // Global flag to prevent duplicate submissions
+        let isSubmitting = false;
         
-        // Simplified initialization for the rider signup form
+        // Default password for all riders
+        const DEFAULT_PASSWORD = '123456';
+
+        // Initialize on DOM load
         document.addEventListener('DOMContentLoaded', async () => {
-            console.log('DOMContentLoaded event fired');
+            console.log('Rider signup form loaded');
             
-            // Add close button event listener
+            // Close button handler
             const closeBtn = document.getElementById('closeBtn');
             if (closeBtn) {
-                console.log('Adding close button event listener');
                 closeBtn.addEventListener('click', () => {
-                    console.log('Close button clicked');
                     if (window.self !== window.top) {
-                        console.log('Sending CLOSE_RIDER_SIGNUP message to parent');
-                        window.parent.postMessage({ type: 'CLOSE_RIDER_SIGNUP', source: 'closeButton' }, '*');
+                        window.parent.postMessage({ type: 'CLOSE_RIDER_SIGNUP' }, '*');
                     }
                 });
             }
 
-            // Wait for Supabase to be initialized
-            console.log('Waiting for Supabase to initialize...');
-            const waitForSupabase = () => {
-                return new Promise((resolve, reject) => {
-                    let attempts = 0;
-                    const maxAttempts = 30;
-                    
-                    const check = () => {
-                        if (window.supabase) {
-                            console.log('Supabase client found after', attempts, 'attempts');
-                            return resolve();
-                        }
-                        if (attempts++ >= maxAttempts) {
-                            console.error('Supabase client not initialized after', maxAttempts, 'attempts');
-                            return reject(new Error('Supabase client not initialized'));
-                        }
-                        setTimeout(check, 100);
-                    };
-                    
-                    check();
+            // Wait for Supabase
+            await waitForSupabase();
+            
+            // Clear errors on input
+            document.querySelectorAll('input, select').forEach(element => {
+                element.addEventListener('input', function() {
+                    const errorId = this.id + 'Error';
+                    const error = document.getElementById(errorId);
+                    if (error) error.style.display = 'none';
+                    document.getElementById('formError').style.display = 'none';
                 });
-            };
-
-            try {
-                await waitForSupabase();
-                console.log('Supabase client is ready, form ready for use');
-                
-                // Set up form submission
-                const signupForm = document.getElementById('signupForm');
-                if (signupForm) {
-                    signupForm.addEventListener('submit', openPasswordEmailModal);
-                    console.log('Form submission handler attached');
-                }
-                
-                // Set up modal confirm button
-                const confirmBtn = document.getElementById('confirmPasswordEmailBtn');
-                if (confirmBtn) {
-                    confirmBtn.addEventListener('click', () => {
-                        const emailPassword = document.getElementById('emailPasswordField').value;
-                        signup({ preventDefault: () => {}, target: document.getElementById('signupForm') }, emailPassword);
-                        document.getElementById('passwordEmailModal').style.display = 'none';
-                    });
-                    console.log('Modal confirm button handler attached');
-                }
-                
-                // Close modal when clicking outside
-                const modal = document.getElementById('passwordEmailModal');
-                if (modal) {
-                    modal.addEventListener('click', function(e) {
-                        if (e.target === this) {
-                            this.style.display = 'none';
-                        }
-                    });
-                }
-                
-            } catch (err) {
-                console.error('Error during initialization:', err);
-                showNotification('Failed to initialize. Please refresh the page.', 'error');
-            }
+            });
         });
 
-        // Function to show notifications
+        // Wait for Supabase to be available
+        function waitForSupabase() {
+            return new Promise((resolve, reject) => {
+                let attempts = 0;
+                const maxAttempts = 30;
+                
+                const check = () => {
+                    if (window.supabase || (window.parent && window.parent.supabase)) {
+                        console.log('Supabase client found');
+                        return resolve();
+                    }
+                    if (attempts++ >= maxAttempts) {
+                        return reject(new Error('Supabase not initialized'));
+                    }
+                    setTimeout(check, 100);
+                };
+                
+                check();
+            });
+        }
+
+        // Get Supabase client
+        function getSupabaseClient() {
+            if (window.parent && window.parent.supabase) {
+                return window.parent.supabase;
+            }
+            if (window.supabase) {
+                return window.supabase;
+            }
+            throw new Error('Supabase client not found');
+        }
+
+        // Show notification
         function showNotification(message, type = 'success') {
+            const container = document.getElementById('notificationContainer');
+            if (!container) return;
+
             const notification = document.createElement('div');
             notification.className = `notification ${type}`;
             
@@ -517,48 +373,29 @@
                 <span class="message">${message}</span>
             `;
             
-            notificationContainer.appendChild(notification);
+            container.appendChild(notification);
             
-            // Trigger animation
             setTimeout(() => {
                 notification.style.opacity = '1';
                 notification.style.transform = 'translateX(0)';
             }, 10);
             
-            // Remove notification after animation
             setTimeout(() => {
                 notification.style.opacity = '0';
                 setTimeout(() => {
-                    notificationContainer.removeChild(notification);
+                    if (notification.parentNode) {
+                        container.removeChild(notification);
+                    }
                 }, 500);
             }, 3000);
         }
 
-        // Global flag to track submission state
-        let isSubmitting = false;
-        
-        // Function to get the appropriate Supabase client
-        function getSupabaseClient() {
-            // First try to get the client from the parent window (admin)
-            if (window.parent && window.parent.supabase) {
-                console.log('Using parent window Supabase client');
-                return window.parent.supabase;
-            }
-            
-            // Fall back to the iframe's client if in standalone mode
-            if (window.supabase) {
-                console.log('Using iframe Supabase client');
-                return window.supabase;
-            }
-            
-            throw new Error('Supabase client not found. Please ensure the application is properly loaded.');
-        }
-
-        async function signup(event, emailPassword = '') {
+        // Main signup function
+        async function signup(event) {
             event.preventDefault();
             
             if (isSubmitting) {
-                console.warn("Signup already in progress, ignoring duplicate submit");
+                console.warn("Submission already in progress");
                 return;
             }
             
@@ -570,38 +407,32 @@
             const contact = document.getElementById('contact').value.trim();
             const vehicleType = document.getElementById('vehicle').value;
             const plateNumber = document.getElementById('plate').value.trim();
-            const password = emailPassword || document.getElementById('password').value;
-            const confirmPassword = emailPassword || document.getElementById('confirmPassword').value;
             
-            // Show loading state
+            // Get button and show loading state
             const signupBtn = event.target.querySelector('button[type="submit"]');
-            const originalBtnText = signupBtn.innerHTML;
             signupBtn.disabled = true;
             signupBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating account...';
             
             try {
-                // 1️⃣ Validate password
-                if (!password || password.length < 6) {
-                    throw new Error("Password must be at least 6 characters.");
+                // Validate inputs
+                if (!name || !email || !contact || !vehicleType) {
+                    throw new Error("Please fill in all required fields");
                 }
-                
-                if (password !== confirmPassword) {
-                    throw new Error("Passwords do not match.");
+
+                if (!/^[0-9]{10}$/.test(contact)) {
+                    throw new Error("Contact number must be exactly 10 digits");
                 }
-                
+
                 showNotification("Creating rider account...", "info");
                 
-                // Get the Supabase client
+                // Get Supabase client
                 const supabase = getSupabaseClient();
-                if (!supabase) {
-                    throw new Error('Supabase client not available. Please refresh the page and try again.');
-                }
                 
-                // 2️⃣ Sign up the user with standard flow
-                console.log('Signing up rider...');
+                // 1. Create auth user with default password
+                console.log('Creating auth user...');
                 const { data: authData, error: signUpError } = await supabase.auth.signUp({
                     email: email,
-                    password: password,
+                    password: DEFAULT_PASSWORD,
                     options: {
                         data: {
                             name: name,
@@ -614,15 +445,15 @@
                 });
                 
                 if (signUpError) {
-                    console.error("Error during sign-up:", signUpError);
-                    throw new Error(signUpError.message || "Failed to create user account.");
+                    console.error("Sign up error:", signUpError);
+                    throw new Error(signUpError.message || "Failed to create account");
                 }
                 
-                console.log("Auth user created:", authData);
+                console.log("Auth user created:", authData.user.id);
                 
-                // 3️⃣ Insert rider profile
+                // 2. Create rider profile
                 console.log('Creating rider profile...');
-                const { data: riderResult, error: riderError } = await supabase.rpc(
+                const { error: riderError } = await supabase.rpc(
                     "register_new_rider",
                     {
                         p_name: name,
@@ -635,111 +466,65 @@
                 );
                 
                 if (riderError) {
-                    console.error("Error creating rider profile:", riderError);
-                    throw new Error("Failed to create rider profile.");
+                    console.error("Rider profile error:", riderError);
+                    throw new Error("Failed to create rider profile");
                 }
                 
-                console.log("Rider profile created:", riderResult);
+                console.log("Rider profile created successfully");
                 
-                // 4️⃣ Send Welcome Email (NO PASSWORD)
+                // 3. Send welcome email
                 try {
-                    const params = {
+                    console.log("Sending welcome email...");
+                    
+                    const emailParams = {
                         rider_name: name,
                         email: email,
-                        password: password,   // Include password in the email
                         login_url: window.location.origin + "/rider-login.html"
                     };
                     
-                    console.log("Sending Rider Welcome Email...");
+                    // Check if we're in an iframe (opened from admin)
+                    if (window.parent !== window && window.parent.sendOrderEmail) {
+                        await window.parent.sendOrderEmail(
+                            email,
+                            name,
+                            "rider-credentials",
+                            7, // Template ID 7 for rider credentials
+                            emailParams
+                        );
+                    } else {
+                        console.warn("Parent window sendOrderEmail not available");
+                    }
                     
-                    await window.parent.sendOrderEmail(
-                        email,
-                        name,
-                        "rider-credentials",   // Must match admin.html subject handler
-                        7,                      // Template ID 7
-                        params
-                    );
-                    
-                    console.log("Welcome email sent!");
-                    
+                    console.log("Welcome email sent");
                 } catch (emailErr) {
-                    console.error("Email sending error:", emailErr);
-                    showNotification("Account created, but welcome email failed.", "warning");
+                    console.error("Email error:", emailErr);
+                    showNotification("Account created, but email failed to send", "warning");
                 }
                 
-                // 5️⃣ Final Notification + Close Modal
+                // Success!
                 showNotification("Rider account created successfully!", "success");
                 
                 // Reset form
                 event.target.reset();
                 
-                // Close the modal after a short delay (if opened from admin)
-                if (window.parent !== window) {
-                    setTimeout(() => {
+                // Close modal after delay
+                setTimeout(() => {
+                    if (window.parent !== window) {
                         window.parent.postMessage({ type: 'CLOSE_RIDER_SIGNUP' }, '*');
-                    }, 1500);
-                } else {
-                    // If standalone, redirect to login
-                    setTimeout(() => {
-                        window.location.href = 'rider-login.html?signup=success&email=' + encodeURIComponent(email);
-                    }, 1500);
-                }
+                    } else {
+                        window.location.href = 'rider-login.html?signup=success';
+                    }
+                }, 1500);
                 
             } catch (error) {
                 console.error('Signup error:', error);
-                showNotification(error.message || 'An error occurred during signup', 'error');
+                showNotification(error.message || 'Signup failed', 'error');
             } finally {
-                // Re-enable the signup button
-                if (signupBtn) {
-                    signupBtn.disabled = false;
-                    signupBtn.innerHTML = 'Sign Up';
-                }
+                signupBtn.disabled = false;
+                signupBtn.innerHTML = 'Create Rider Account';
                 isSubmitting = false;
             }
         }
-
-        
-        // Real-time password match validation
-        document.getElementById('confirmPassword').addEventListener('input', function() {
-            const password = document.getElementById('password').value;
-            const confirmPassword = this.value;
-            const error = document.getElementById('confirmPasswordError');
-            
-            if (password !== confirmPassword) {
-                error.style.display = 'block';
-            } else {
-                error.style.display = 'none';
-            }
-        });
-        
-        // Clear errors when user starts typing
-        document.querySelectorAll('input, select').forEach(element => {
-            element.addEventListener('input', function() {
-                const errorId = this.id + 'Error';
-                const error = document.getElementById(errorId);
-                if (error) {
-                    error.style.display = 'none';
-                }
-                document.getElementById('formError').style.display = 'none';
-            });
-        });
-
-        // Add password toggle functionality
-        document.getElementById('passwordToggle').addEventListener('click', function() {
-            const passwordInput = document.getElementById('password');
-            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-            passwordInput.setAttribute('type', type);
-            this.classList.toggle('fa-eye');
-            this.classList.toggle('fa-eye-slash');
-        });
-
-        document.getElementById('confirmPasswordToggle').addEventListener('click', function() {
-            const passwordInput = document.getElementById('confirmPassword');
-            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-            passwordInput.setAttribute('type', type);
-            this.classList.toggle('fa-eye');
-            this.classList.toggle('fa-eye-slash');
-        });
     </script>
 </body>
 </html>
