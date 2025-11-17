@@ -641,24 +641,46 @@
                 
                 console.log("Rider profile created:", riderResult);
                 
-                // 4️⃣ Send Welcome Email (NO PASSWORD)
+                // 4️⃣ Send Welcome Email using Supabase
                 try {
-                    const params = {
-                        rider_name: name,
-                        email: email,
-                        password: password,   // Include password in the email
-                        login_url: window.location.origin + "/rider-login.html"
-                    };
-                    
                     console.log("Sending Rider Welcome Email...");
                     
-                    await window.parent.sendOrderEmail(
-                        email,
-                        name,
-                        "rider-credentials",   // Must match admin.html subject handler
-                        7,                      // Template ID 7
-                        params
-                    );
+                    const emailTemplate = `
+                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden;">
+                            <div style="background-color: #3498db; padding: 20px; text-align: center;">
+                                <h1 style="color: white; margin: 0; font-size: 24px;">Email Authentication</h1>
+                            </div>
+                            <div style="padding: 30px; background-color: #ffffff; text-align: center;">
+                                <h2 style="color: #2c3e50; font-size: 20px; margin-bottom: 20px;">Your email has been authenticated by Supabase.</h2>
+                                <p style="color: #7f8c8d; font-size: 16px; line-height: 1.5;">
+                                    You can now sign up using your email as rider of Laura's Lechon.
+                                </p>
+                                <div style="margin-top: 30px;">
+                                    <a href="${window.location.origin}/rider-login.html" 
+                                       style="display: inline-block; background-color: #3498db; color: white; 
+                                              text-decoration: none; padding: 10px 20px; border-radius: 5px; 
+                                              font-weight: 500; margin-top: 15px;">
+                                        Go to Login
+                                    </a>
+                                </div>
+                                <div style="margin-top: 30px;">
+                                    <p style="color: #95a5a6; font-size: 12px;">
+                                        If you have any questions, please contact support.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    const { error: emailError } = await supabase.functions.invoke('send-email', {
+                        body: JSON.stringify({
+                            to: email,
+                            subject: 'Welcome to Laura\'s Lechon - Rider Account Created',
+                            html: emailTemplate
+                        })
+                    });
+
+                    if (emailError) throw emailError;
                     
                     console.log("Welcome email sent!");
                     
