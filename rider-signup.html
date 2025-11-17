@@ -523,7 +523,7 @@
                 // Use standard signup flow (works for both admin and non-admin contexts)
                 console.log('Using standard signup flow');
                 
-                // 1️⃣ First sign up the user with Supabase Auth
+                // 2️⃣ First sign up the user with Supabase Auth
                 console.log('Signing up with Supabase Auth...');
                 const { data: authData, error: signUpError } = await supabase.auth.signUp({
                     email: email,
@@ -548,20 +548,25 @@
                 const authUser = authData.user;
                 console.log('Auth user created:', authUser);
                 
-                // 2️⃣ Create rider profile in the database
+                // 3️⃣ Create rider profile in the database
                 console.log('Creating rider profile...');
-                const { data: riderData, error: createRiderError } = await supabase.rpc('create_rider_profile', {
-                    p_name: name,
-                    p_email: email,
-                    p_contact: contact,
-                    p_vehicle_type: vehicleType,
-                    p_plate_number: plateNumber,
-                    p_auth_user_id: authUser.id
-                });
+                const { data: riderData, error: createRiderError } = await supabase
+                    .from('riders')
+                    .insert([{
+                        name: name,
+                        email: email,
+                        contact: contact,
+                        vehicle_type: vehicleType,
+                        plate_number: plateNumber,
+                        status: 'Available',
+                        auth_user_id: authUser.id
+                    }])
+                    .select()
+                    .single();
                     
                 if (createRiderError) {
                     console.error('Error creating rider profile:', createRiderError);
-                    throw new Error('Failed to create rider profile. ' + (createRiderError.message || 'Please try again.'));
+                    throw new Error('Failed to create rider profile. Please try again.');
                 }
                 
                 console.log('Rider profile created successfully:', riderData);
