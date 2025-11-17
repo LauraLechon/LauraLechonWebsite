@@ -355,52 +355,72 @@
             }, 2000);
         }
 
-        // Simplified initialization for the rider signup form
+        // Wait for Supabase to be initialized and check admin status
         document.addEventListener('DOMContentLoaded', async () => {
-            console.log('DOMContentLoaded event fired');
-            
-            // Add close button event listener
-            const closeBtn = document.getElementById('closeBtn');
-            if (closeBtn) {
-                console.log('Adding close button event listener');
-                closeBtn.addEventListener('click', () => {
-                    console.log('Close button clicked');
-                    if (window.self !== window.top) {
-                        console.log('Sending CLOSE_RIDER_SIGNUP message to parent');
-                        window.parent.postMessage({ type: 'CLOSE_RIDER_SIGNUP', source: 'closeButton' }, '*');
-                    }
-                });
-            }
-
-            // Wait for Supabase to be initialized
-            console.log('Waiting for Supabase to initialize...');
-            const waitForSupabase = () => {
-                return new Promise((resolve, reject) => {
-                    let attempts = 0;
-                    const maxAttempts = 30;
-                    
-                    const check = () => {
-                        if (window.supabase) {
-                            console.log('Supabase client found after', attempts, 'attempts');
-                            return resolve();
-                        }
-                        if (attempts++ >= maxAttempts) {
-                            console.error('Supabase client not initialized after', maxAttempts, 'attempts');
-                            return reject(new Error('Supabase client not initialized'));
-                        }
-                        setTimeout(check, 100);
-                    };
-                    
-                    check();
-                });
-            };
-
             try {
+                // Add close button event listener immediately
+                const closeBtn = document.getElementById('closeBtn');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', () => {
+                        if (window.self !== window.top) {
+                            window.parent.postMessage({ type: 'CLOSE_RIDER_SIGNUP' }, '*');
+                        }
+                    });
+                }
+
+                // If we're not in an iframe, don't proceed with admin check
+                if (window.self === window.top) {
+                    console.warn('This page is designed to be used within an iframe');
+                    return;
+                }
+
+                // Wait for Supabase to be initialized (with a timeout)
+                const waitForSupabase = () => {
+                    return new Promise((resolve, reject) => {
+                        let attempts = 0;
+                        const check = () => {
+                            if (window.supabase) return resolve();
+                            if (attempts++ > 20) return reject(new Error('Supabase client not initialized'));
+                            setTimeout(check, 100);
+                        };
+                        check();
+                    });
+                };
+
                 await waitForSupabase();
-                console.log('Supabase client is ready, form ready for use');
+                
+                // Check if user is authenticated
+                const { data: { session }, error } = await window.supabase.auth.getSession();
+                
+                if (error) {
+                    console.error('Session check error:', error);
+                    showErrorAndClose('Error checking admin status. Please refresh the page.');
+                    return;
+                }
+
+                if (!session) {
+                    showErrorAndClose('You must be logged in as an admin to add riders.');
+                    return;
+                }
+
+                // Check if user is admin
+                const { data: userData, error: userError } = await window.supabase
+                    .from('profiles')
+                    .select('is_admin')
+                    .eq('id', session.user.id)
+                    .single();
+
+                if (userError || !userData || !userData.is_admin) {
+                    showErrorAndClose('Only administrators can add new riders.');
+                    return;
+                }
+                
             } catch (err) {
                 console.error('Error during initialization:', err);
                 showNotification('Failed to initialize. Please refresh the page.', 'error');
+                setTimeout(() => {
+                    window.parent.postMessage({ type: 'CLOSE_RIDER_SIGNUP' }, '*');
+                }, 2000);
             }
         });
 
@@ -436,25 +456,7 @@
             }, 3000);
         }
 
-        // Global flag to track submission state
         let isSubmitting = false;
-        
-        // Function to get the appropriate Supabase client
-        function getSupabaseClient() {
-            // First try to get the client from the parent window (admin)
-            if (window.parent && window.parent.supabase) {
-                console.log('Using parent window Supabase client');
-                return window.parent.supabase;
-            }
-            
-            // Fall back to the iframe's client if in standalone mode
-            if (window.supabase) {
-                console.log('Using iframe Supabase client');
-                return window.supabase;
-            }
-            
-            throw new Error('Supabase client not found. Please ensure the application is properly loaded.');
-        }
 
         async function signup(event) {
             event.preventDefault();
@@ -482,21 +484,10 @@
             signupBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating account...';
 
             try {
-                // Get the appropriate Supabase client
-                const supabase = getSupabaseClient();
-                
-                // Check if we have a valid client
-                if (!supabase) {
-                    throw new Error('Supabase client not available. Please refresh the page and try again.');
+                // Ensure Supabase is initialized
+                if (!window.supabase) {
+                    throw new Error('Application not properly initialized. Please refresh the page.');
                 }
-                
-                // Log debug information
-                console.log('Supabase client initialized:', !!supabase);
-                console.log('Has auth module:', !!supabase.auth);
-                console.log('Has admin module:', !!supabase.auth?.admin);
-                
-                // Check if we're running in admin context
-                const isAdminContext = window.self !== window.top;
 
                 // Clear previous errors
                 document.querySelectorAll('.error').forEach(el => el.style.display = 'none');
@@ -520,111 +511,88 @@
 
                 console.log('Starting signup process...');
 
-                // Use standard signup flow (works for both admin and non-admin contexts)
-                console.log('Using standard signup flow');
-                
-                // 2️⃣ First sign up the user with Supabase Auth
-                console.log('Signing up with Supabase Auth...');
-                const { data: authData, error: signUpError } = await supabase.auth.signUp({
-                    email: email,
-                    password: password,
-                    options: {
-                        data: {
-                            name: name,
+                // 1️⃣ First check if email already exists in riders table
+                console.log('Checking for existing rider with email:', email);
+                const { data: existingRider, error: checkError } = await window.supabase
+                    .from('riders')
+                    .select('email')
+                    .eq('email', email)
+                    .maybeSingle();
+
+                if (existingRider) {
+                    throw new Error('This email is already registered. Please use a different email or try logging in.');
+                }
+
+                // 2️⃣ Create Supabase Auth user only if email doesn't exist
+                console.log('Creating Supabase Auth user...');
+                const { data: authData, error: authError } = await window.supabase.auth.signUp({
+                    email,
+                    password,
+                    options: { 
+                        data: { 
+                            name,
                             user_type: 'rider',
-                            contact: contact,
+                            contact,
                             vehicle_type: vehicleType,
                             plate_number: plateNumber
-                        }
+                        },
+                        emailRedirectTo: window.location.origin + '/rider-login.html'
                     }
                 });
-                
-                if (signUpError) {
-                    console.error('Error signing up:', signUpError);
-                    throw new Error('Failed to create user account. ' + (signUpError.message || 'Please try again.'));
+
+                if (authError) {
+                    console.error('Auth error:', authError);
+                    if (authError.message.includes('already registered')) {
+                        throw new Error('This email is already registered. Please use a different email or try logging in.');
+                    }
+                    throw authError;
                 }
-                
+
                 const authUser = authData.user;
                 console.log('Auth user created:', authUser);
                 
-                // 2️⃣ Create rider profile using the secure database function
-                console.log('Creating rider profile via database function...');
-                const { data: riderResult, error: createRiderError } = await supabase
-                    .rpc('register_new_rider', {
-                        p_name: name,
-                        p_email: email,
-                        p_contact: contact,
-                        p_vehicle_type: vehicleType,
-                        p_plate_number: plateNumber || '',
-                        p_auth_user_id: authUser.id
-                    });
-                    
-                if (createRiderError) {
-                    console.error('Error calling register_new_rider function:', createRiderError);
-                    throw new Error('Failed to create rider profile. ' + (createRiderError.message || 'Please try again.'));
-                }
-                
-                // Check if the function returned an error
-                if (riderResult && !riderResult.success) {
-                    console.error('Function returned error:', riderResult.error);
-                    throw new Error(riderResult.error || 'Failed to create rider profile');
-                }
-                
-                console.log('Rider profile created successfully:', riderResult);
-                
-                // 3️⃣ Send credentials email via Brevo
-                try {
-                    const params = {
-                        rider_name: name,
+                // Create rider profile directly in the riders table
+                console.log('Creating rider profile in database...');
+                const { data: riderData, error: insertError } = await window.supabase
+                    .from('riders')
+                    .insert([{
+                        name: name,
                         email: email,
-                        password: password,
-                        login_url: window.location.origin + "/rider-login.html"
-                    };
+                        contact: contact,
+                        vehicle_type: vehicleType,
+                        plate_number: plateNumber,
+                        status: 'Pending', // Set to Pending until email is verified
+                        auth_user_id: authUser.id
+                    }])
+                    .select()
+                    .single();
 
-                    console.log("Sending rider credentials email...");
-
-                    // Uses the Brevo helper from admin.html
-                    await window.parent.sendOrderEmail(
-                        email,
-                        name,
-                        "rider-account",
-                        7,              // Template ID for Rider Credentials
-                        params
-                    );
-
-                    console.log("Credentials email sent!");
-
-                } catch (emailErr) {
-                    console.error("Error sending rider credentials email:", emailErr);
-                    showNotification("Rider created, but email failed to send.", "warning");
+                if (insertError) {
+                    console.error('Error creating rider profile:', insertError);
+                    // Try to clean up the auth user if rider creation fails
+                    try {
+                        await window.supabase.auth.admin.deleteUser(authUser.id);
+                    } catch (cleanupError) {
+                        console.error('Failed to cleanup auth user:', cleanupError);
+                    }
+                    throw new Error('Failed to create rider profile. Please try again.');
                 }
-                
-                // Show success message and redirect to login page
-                showNotification('Account created successfully! Please check your email to verify your account.', 'success');
-                setTimeout(() => {
-                    window.location.href = 'rider-login.html?signup=success&email=' + encodeURIComponent(email);
-                }, 3000);
-                
-                // If we get here, the signup was successful
-                console.log('Rider setup completed successfully');
+
+                console.log('Rider profile created successfully:', riderData);
                 
                 // Show success message
-                showNotification('Rider account created successfully!', 'success');
+                showNotification('Account created successfully! Please check your email to verify your account before logging in.', 'success');
                 
                 // Reset form
                 event.target.reset();
                 
-                // Close the modal after a short delay (if opened from admin)
-                if (window.parent !== window) {
-                    setTimeout(() => {
-                        window.parent.postMessage({ type: 'CLOSE_RIDER_SIGNUP' }, '*');
-                    }, 2000);
-                } else {
-                    // If standalone, redirect to login
-                    setTimeout(() => {
-                        window.location.href = 'rider-login.html?signup=success&email=' + encodeURIComponent(email);
-                    }, 2000);
-                }
+                // Redirect to login page after a short delay
+                setTimeout(() => {
+                    window.location.href = 'rider-login.html?signup=success&email=' + encodeURIComponent(email);
+                }, 3000);
+                
+                // Reset form
+                event.target.reset();
                 
             } catch (error) {
                 console.error('Signup error:', error);
