@@ -522,17 +522,20 @@
                 
                 console.log("Auth user created:", authData);
                 
-                // 3️⃣ Insert rider profile
+                // 3️⃣ Insert rider profile directly into the riders table
                 console.log('Creating rider profile...');
                 const { data: riderResult, error: riderError } = await supabase
-                    .rpc('create_rider_profile', {
-                        p_auth_user_id: authData.user.id,
-                        p_name: name,
-                        p_email: email,
-                        p_contact: contact,
-                        p_vehicle_type: vehicleType,
-                        p_plate_number: plateNumber || ''
-                    });
+                    .from('riders')
+                    .insert([{
+                        auth_user_id: authData.user.id,
+                        name: name,
+                        email: email,
+                        contact: contact,
+                        vehicle_type: vehicleType,
+                        plate_number: plateNumber || '',
+                        status: 'Pending'
+                    }])
+                    .select();
                 
                 if (riderError) {
                     console.error("Error creating rider profile:", riderError);
