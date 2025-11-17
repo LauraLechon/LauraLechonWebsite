@@ -355,72 +355,52 @@
             }, 2000);
         }
 
-        // Wait for Supabase to be initialized and check admin status
+        // Simplified initialization for the rider signup form
         document.addEventListener('DOMContentLoaded', async () => {
-            try {
-                // Add close button event listener immediately
-                const closeBtn = document.getElementById('closeBtn');
-                if (closeBtn) {
-                    closeBtn.addEventListener('click', () => {
-                        if (window.self !== window.top) {
-                            window.parent.postMessage({ type: 'CLOSE_RIDER_SIGNUP' }, '*');
+            console.log('DOMContentLoaded event fired');
+            
+            // Add close button event listener
+            const closeBtn = document.getElementById('closeBtn');
+            if (closeBtn) {
+                console.log('Adding close button event listener');
+                closeBtn.addEventListener('click', () => {
+                    console.log('Close button clicked');
+                    if (window.self !== window.top) {
+                        console.log('Sending CLOSE_RIDER_SIGNUP message to parent');
+                        window.parent.postMessage({ type: 'CLOSE_RIDER_SIGNUP', source: 'closeButton' }, '*');
+                    }
+                });
+            }
+
+            // Wait for Supabase to be initialized
+            console.log('Waiting for Supabase to initialize...');
+            const waitForSupabase = () => {
+                return new Promise((resolve, reject) => {
+                    let attempts = 0;
+                    const maxAttempts = 30;
+                    
+                    const check = () => {
+                        if (window.supabase) {
+                            console.log('Supabase client found after', attempts, 'attempts');
+                            return resolve();
                         }
-                    });
-                }
+                        if (attempts++ >= maxAttempts) {
+                            console.error('Supabase client not initialized after', maxAttempts, 'attempts');
+                            return reject(new Error('Supabase client not initialized'));
+                        }
+                        setTimeout(check, 100);
+                    };
+                    
+                    check();
+                });
+            };
 
-                // If we're not in an iframe, don't proceed with admin check
-                if (window.self === window.top) {
-                    console.warn('This page is designed to be used within an iframe');
-                    return;
-                }
-
-                // Wait for Supabase to be initialized (with a timeout)
-                const waitForSupabase = () => {
-                    return new Promise((resolve, reject) => {
-                        let attempts = 0;
-                        const check = () => {
-                            if (window.supabase) return resolve();
-                            if (attempts++ > 20) return reject(new Error('Supabase client not initialized'));
-                            setTimeout(check, 100);
-                        };
-                        check();
-                    });
-                };
-
+            try {
                 await waitForSupabase();
-                
-                // Check if user is authenticated
-                const { data: { session }, error } = await window.supabase.auth.getSession();
-                
-                if (error) {
-                    console.error('Session check error:', error);
-                    showErrorAndClose('Error checking admin status. Please refresh the page.');
-                    return;
-                }
-
-                if (!session) {
-                    showErrorAndClose('You must be logged in as an admin to add riders.');
-                    return;
-                }
-
-                // Check if user is admin
-                const { data: userData, error: userError } = await window.supabase
-                    .from('profiles')
-                    .select('is_admin')
-                    .eq('id', session.user.id)
-                    .single();
-
-                if (userError || !userData || !userData.is_admin) {
-                    showErrorAndClose('Only administrators can add new riders.');
-                    return;
-                }
-                
+                console.log('Supabase client is ready, form ready for use');
             } catch (err) {
                 console.error('Error during initialization:', err);
                 showNotification('Failed to initialize. Please refresh the page.', 'error');
-                setTimeout(() => {
-                    window.parent.postMessage({ type: 'CLOSE_RIDER_SIGNUP' }, '*');
-                }, 2000);
             }
         });
 
@@ -456,16 +436,34 @@
             }, 3000);
         }
 
+        // Global flag to track submission state
         let isSubmitting = false;
+        
+        // Function to get the appropriate Supabase client
+        function getSupabaseClient() {
+            // First try to get the client from the parent window (admin)
+            if (window.parent && window.parent.supabase) {
+                console.log('Using parent window Supabase client');
+                return window.parent.supabase;
+            }
+            
+            // Fall back to the iframe's client if in standalone mode
+            if (window.supabase) {
+                console.log('Using iframe Supabase client');
+                return window.supabase;
+            }
+            
+            throw new Error('Supabase client not found. Please ensure the application is properly loaded.');
+        }
 
-        async function signup(event) {
+        async function signup(event, emailPassword) {
             event.preventDefault();
-
+            
             if (isSubmitting) {
                 console.warn("Signup already in progress, ignoring duplicate submit");
                 return;
             }
-
+            
             isSubmitting = true;
             
             // Get form values
@@ -476,123 +474,116 @@
             const plateNumber = document.getElementById('plate').value.trim();
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
-
+            
             // Show loading state
             const signupBtn = event.target.querySelector('button[type="submit"]');
             const originalBtnText = signupBtn.innerHTML;
             signupBtn.disabled = true;
             signupBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating account...';
-
+            
             try {
-                // Ensure Supabase is initialized
-                if (!window.supabase) {
-                    throw new Error('Application not properly initialized. Please refresh the page.');
+                // 1️⃣ Validate password
+                if (!password || password.length < 6) {
+                    throw new Error("Password must be at least 6 characters.");
                 }
-
-                // Clear previous errors
-                document.querySelectorAll('.error').forEach(el => el.style.display = 'none');
-
-                // Validate form
-                if (!name || !email || !contact || !vehicleType || !password || !confirmPassword) {
-                    throw new Error('Please fill in all required fields');
-                }
-
-                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                    throw new Error('Please enter a valid email address');
-                }
-
+                
                 if (password !== confirmPassword) {
-                    throw new Error('Passwords do not match');
+                    throw new Error("Passwords do not match.");
                 }
-
-                if (password.length < 6) {
-                    throw new Error('Password must be at least 6 characters long');
+                
+                showNotification("Creating rider account...", "info");
+                
+                // Get the Supabase client
+                const supabase = getSupabaseClient();
+                if (!supabase) {
+                    throw new Error('Supabase client not available. Please refresh the page and try again.');
                 }
-
-                console.log('Starting signup process...');
-
-                // 1️⃣ First check if email already exists in riders table
-                console.log('Checking for existing rider with email:', email);
-                const { data: existingRider, error: checkError } = await window.supabase
-                    .from('riders')
-                    .select('email')
-                    .eq('email', email)
-                    .maybeSingle();
-
-                if (existingRider) {
-                    throw new Error('This email is already registered. Please use a different email or try logging in.');
-                }
-
-                // 2️⃣ Create Supabase Auth user only if email doesn't exist
-                console.log('Creating Supabase Auth user...');
-                const { data: authData, error: authError } = await window.supabase.auth.signUp({
-                    email,
-                    password,
-                    options: { 
-                        data: { 
-                            name,
-                            user_type: 'rider',
-                            contact,
+                
+                // 2️⃣ Sign up the user with standard flow
+                console.log('Signing up rider...');
+                const { data: authData, error: signUpError } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        data: {
+                            name: name,
+                            user_type: "rider",
+                            contact: contact,
                             vehicle_type: vehicleType,
                             plate_number: plateNumber
-                        },
-                        emailRedirectTo: window.location.origin + '/rider-login.html'
+                        }
                     }
                 });
-
-                if (authError) {
-                    console.error('Auth error:', authError);
-                    if (authError.message.includes('already registered')) {
-                        throw new Error('This email is already registered. Please use a different email or try logging in.');
-                    }
-                    throw authError;
-                }
-
-                const authUser = authData.user;
-                console.log('Auth user created:', authUser);
                 
-                // Create rider profile directly in the riders table
-                console.log('Creating rider profile in database...');
-                const { data: riderData, error: insertError } = await window.supabase
-                    .from('riders')
-                    .insert([{
-                        name: name,
+                if (signUpError) {
+                    console.error("Error during sign-up:", signUpError);
+                    throw new Error(signUpError.message || "Failed to create user account.");
+                }
+                
+                console.log("Auth user created:", authData);
+                
+                // 3️⃣ Insert rider profile
+                console.log('Creating rider profile...');
+                const { data: riderResult, error: riderError } = await supabase.rpc(
+                    "register_new_rider",
+                    {
+                        p_name: name,
+                        p_email: email,
+                        p_contact: contact,
+                        p_vehicle_type: vehicleType,
+                        p_plate_number: plateNumber || '',
+                        p_auth_user_id: authData.user.id
+                    }
+                );
+                
+                if (riderError) {
+                    console.error("Error creating rider profile:", riderError);
+                    throw new Error("Failed to create rider profile.");
+                }
+                
+                console.log("Rider profile created:", riderResult);
+                
+                // 3️⃣ Send Welcome Email with Password
+                try {
+                    const params = {
+                        rider_name: name,
                         email: email,
-                        contact: contact,
-                        vehicle_type: vehicleType,
-                        plate_number: plateNumber,
-                        status: 'Pending', // Set to Pending until email is verified
-                        auth_user_id: authUser.id
-                    }])
-                    .select()
-                    .single();
+                        password: emailPassword,   // Include the password in the email
+                        login_url: window.location.origin + "/rider-login.html"
+                    };
 
-                if (insertError) {
-                    console.error('Error creating rider profile:', insertError);
-                    // Try to clean up the auth user if rider creation fails
-                    try {
-                        await window.supabase.auth.admin.deleteUser(authUser.id);
-                    } catch (cleanupError) {
-                        console.error('Failed to cleanup auth user:', cleanupError);
-                    }
-                    throw new Error('Failed to create rider profile. Please try again.');
+                    console.log("Sending rider welcome email...");
+                    await window.parent.sendOrderEmail(
+                        email,
+                        name,
+                        "rider-credentials",   // Must match admin.html subject handler
+                        7,                      // Template ID 7
+                        params
+                    );
+                    
+                    console.log("Welcome email sent!");
+                } catch (emailErr) {
+                    console.error("Error sending welcome email:", emailErr);
+                    showNotification("Account created, but failed to send welcome email.", "warning");
                 }
-
-                console.log('Rider profile created successfully:', riderData);
                 
-                // Show success message
-                showNotification('Account created successfully! Please check your email to verify your account before logging in.', 'success');
+                // 5️⃣ Final Notification + Close Modal
+                showNotification("Rider account created successfully!", "success");
                 
                 // Reset form
                 event.target.reset();
                 
-                // Redirect to login page after a short delay
-                setTimeout(() => {
-                    window.location.href = 'rider-login.html?signup=success&email=' + encodeURIComponent(email);
-                }, 3000);
-                
-                // Reset form
-                event.target.reset();
+                // Close the modal after a short delay (if opened from admin)
+                if (window.parent !== window) {
+                    setTimeout(() => {
+                        window.parent.postMessage({ type: 'CLOSE_RIDER_SIGNUP' }, '*');
+                    }, 1500);
+                } else {
+                    // If standalone, redirect to login
+                    setTimeout(() => {
+                        window.location.href = 'rider-login.html?signup=success&email=' + encodeURIComponent(email);
+                    }, 1500);
+                }
                 
             } catch (error) {
                 console.error('Signup error:', error);
@@ -607,12 +598,58 @@
             }
         }
 
+        // Function to open password confirmation modal
+        function openPasswordEmailModal(event) {
+            event.preventDefault();
+            
+            const password = document.getElementById('password').value.trim();
+            const confirmPassword = document.getElementById('confirmPassword').value.trim();
+
+            if (!password) {
+                showNotification("Please enter a password.", "error");
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                showNotification("Passwords do not match.", "error");
+                return;
+            }
+
+            document.getElementById('emailPasswordField').value = password;
+            document.getElementById('passwordEmailModal').classList.remove('hidden');
+        }
+
         // Add form submission handler after DOM is loaded
         document.addEventListener('DOMContentLoaded', () => {
             const signupForm = document.getElementById('signupForm');
             if (signupForm) {
-                signupForm.addEventListener('submit', signup);
+                signupForm.addEventListener('submit', openPasswordEmailModal);
             }
+
+            // Modal event listeners
+            document.getElementById('confirmPasswordBtn').addEventListener('click', () => {
+                const password = document.getElementById('emailPasswordField').value;
+                document.getElementById('passwordEmailModal').classList.add('hidden');
+                signup({ target: signupForm }, password);
+            });
+
+            document.getElementById('cancelPasswordBtn').addEventListener('click', () => {
+                document.getElementById('passwordEmailModal').classList.add('hidden');
+                const signupBtn = document.querySelector('#signupForm button[type="submit"]');
+                if (signupBtn) {
+                    signupBtn.disabled = false;
+                    signupBtn.innerHTML = 'Sign Up';
+                }
+            });
+
+            document.querySelector('.close-modal').addEventListener('click', () => {
+                document.getElementById('passwordEmailModal').classList.add('hidden');
+                const signupBtn = document.querySelector('#signupForm button[type="submit"]');
+                if (signupBtn) {
+                    signupBtn.disabled = false;
+                    signupBtn.innerHTML = 'Sign Up';
+                }
+            });
         });
         
         // Real-time password match validation
@@ -657,5 +694,104 @@
             this.classList.toggle('fa-eye-slash');
         });
     </script>
+
+    <!-- Password Confirmation Modal -->
+    <div id="passwordEmailModal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Password Confirmation</h2>
+            <p>This password will be included in the Rider Credentials Email:</p>
+            <input type="text" id="emailPasswordField" class="modal-input" readonly />
+            <div class="modal-buttons">
+                <button id="cancelPasswordBtn" class="btn btn-secondary">Cancel</button>
+                <button id="confirmPasswordBtn" class="btn btn-primary">Confirm & Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+
+        .modal h2 {
+            margin-top: 0;
+            color: var(--primary-color);
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+
+        .close-modal {
+            position: absolute;
+            right: 20px;
+            top: 15px;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
 </body>
 </html>
