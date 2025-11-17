@@ -525,14 +525,14 @@
                 // 3️⃣ Insert rider profile
                 console.log('Creating rider profile...');
                 const { data: riderResult, error: riderError } = await supabase.rpc(
-                    "register_new_rider",
+                    "create_rider_profile",
                     {
                         p_name: name,
                         p_email: email,
                         p_contact: contact,
                         p_vehicle_type: vehicleType,
                         p_plate_number: plateNumber || '',
-                        p_user_id: authData.user.id
+                        p_auth_user_id: authData.user.id
                     }
                 );
                 
