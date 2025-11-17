@@ -621,30 +621,65 @@
                 const user = authData.user;
                 console.log("Using auth user from signup response:", user);
                 
+                // Add a small delay to ensure the user is fully committed to the database
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
                 // 3️⃣ Insert rider profile
                 console.log('Creating rider profile...');
                 
-                try {
-                    // Directly insert into the riders table
-                    const { data: riderData, error: insertError } = await supabase
-                        .from('riders')
-                        .insert([{
-                            name: name,
-                            email: email,
-                            contact: contact,
-                            vehicle_type: vehicleType,
-                            plate_number: plateNumber || '',
-                            auth_user_id: user.id,
-                            status: 'Inactive',
-                            created_at: new Date().toISOString(),
-                            updated_at: new Date().toISOString()
-                        }])
-                        .select();
-                    
-                    if (insertError) {
-                        console.error("Insert Error:", insertError);
-                        throw new Error(`Failed to create rider profile: ${insertError.message}`);
+                // Retry mechanism for rider profile creation
+                let retryCount = 0;
+                const maxRetries = 3;
+                let insertError;
+                let riderData;
+                
+                while (retryCount < maxRetries) {
+                    try {
+                        // Directly insert into the riders table
+                        const result = await supabase
+                            .from('riders')
+                            .insert([{
+                                name: name,
+                                email: email,
+                                contact: contact,
+                                vehicle_type: vehicleType,
+                                plate_number: plateNumber || '',
+                                auth_user_id: user.id,
+                                status: 'Inactive',
+                                created_at: new Date().toISOString(),
+                                updated_at: new Date().toISOString()
+                            }])
+                            .select();
+                            
+                        insertError = result.error;
+                        riderData = result.data;
+                        
+                        if (!insertError) {
+                            // Success - exit the retry loop
+                            console.log("Rider created successfully:", riderData);
+                            break;
+                        }
+                        
+                        // If we get a foreign key violation, wait and retry
+                        if (insertError.code === '23503') {
+                            console.log(`Retry ${retryCount + 1}: Waiting for user to be committed...`);
+                            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+                            retryCount++;
+                            
+                            // If we've reached max retries, throw the error
+                            if (retryCount >= maxRetries) {
+                                console.error("Max retries reached. Last error:", insertError);
+                                throw new Error(`Failed to create rider profile after ${maxRetries} attempts: ${insertError.message}`);
+                            }
+                        } else {
+                            // For other errors, throw immediately
+                            throw insertError;
+                        }
+                    } catch (err) {
+                        console.error("Error in rider creation attempt:", err);
+                        throw new Error(`Failed to create rider profile: ${err.message}`);
                     }
+                }
                     
                     console.log("Rider created successfully:", riderData);
                     
