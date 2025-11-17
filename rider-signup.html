@@ -471,25 +471,11 @@
                 // Set up form submission
                 const signupForm = document.getElementById('signupForm');
                 if (signupForm) {
-                    signupForm.addEventListener('submit', openPasswordEmailModal);
-                    console.log('Form submission handler attached');
-                }
-                
-                // Set up modal confirm button
-                const confirmBtn = document.getElementById('confirmPasswordEmailBtn');
-                if (confirmBtn) {
-                    confirmBtn.addEventListener('click', () => {
-                        const emailPassword = document.getElementById('emailPasswordField').value;
-                        signup(
-                            { 
-                                preventDefault: () => {}, 
-                                target: document.querySelector('#signupForm')
-                            }, 
-                            emailPassword
-                        );
-                        document.getElementById('passwordEmailModal').style.display = 'none';
+                    signupForm.addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        signup(e);
                     });
-                    console.log('Modal confirm button handler attached');
+                    console.log('Form submission handler attached');
                 }
                 
                 // Close modal when clicking outside
@@ -652,7 +638,6 @@
                     const params = {
                         rider_name: name,
                         email: email,
-                        password: password,   // Include password in the email
                         login_url: window.location.origin + "/rider-login.html"
                     };
                     
