@@ -543,14 +543,24 @@
                 
                 // 3️⃣ Insert rider profile with retry logic
                 console.log('Creating rider profile with retry logic...');
-                let retries = 3;
+                let retries = 5; // Increased from 3 to 5 retries
                 let riderResult, riderError;
                 let shouldRetry = true;
+                const authUserId = authData.user?.id;
+                
+                if (!authUserId) {
+                    throw new Error("Failed to get user ID after signup. Please try again.");
+                }
+                
+                // Initial delay to ensure auth user is committed
+                await new Promise(resolve => setTimeout(resolve, 1000));
 
                 while (retries > 0 && shouldRetry) {
                     try {
-                        // Try to create rider profile
-                        const result = await supabase.rpc(
+                        console.log(`Attempt ${5 - retries + 1} to create rider profile...`);
+                        
+                        // Try to create rider profile using RPC
+                        const { data, error } = await supabase.rpc(
                             "create_rider_profile",
                             {
                                 p_name: name,
@@ -559,37 +569,35 @@
                                 p_vehicle_type: vehicleType,
                                 p_plate_number: plateNumber || '',
                                 p_status: 'Pending',
-                                p_auth_user_id: authData.user.id
+                                p_auth_user_id: authUserId
                             }
                         );
                         
-                        riderResult = result.data;
-                        riderError = result.error;
-                        
-                        // If no error, break out of the retry loop
-                        if (!riderError) {
-                            shouldRetry = false;
-                            break;
+                        if (error) {
+                            throw error;
                         }
                         
-                        console.log("RPC error:", riderError);
+                        riderResult = data;
+                        shouldRetry = false;
+                        break;
+                        
+                    } catch (error) {
+                        riderError = error;
+                        console.error(`Attempt ${5 - retries + 1} failed:`, error);
                         
                         // If we get a foreign key violation, wait and retry
-                        if (riderError.code === '23503' && 
-                            riderError.details && 
-                            riderError.details.includes('auth_user_id_fkey')) {
-                            console.log(`Auth user not found, retrying... (${retries} attempts left)`);
-                            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+                        if (error.code === '23503' && 
+                            error.details && 
+                            error.details.includes('auth_user_id_fkey')) {
+                            const waitTime = 1000 * (5 - retries + 1); // Exponential backoff
+                            console.log(`Auth user not found, retrying in ${waitTime}ms... (${retries} attempts left)`);
+                            await new Promise(resolve => setTimeout(resolve, waitTime));
                             retries--;
                             continue;
                         }
                         
                         // For other errors, don't retry
-                        shouldRetry = false;
-                        break;
-                    } catch (error) {
-                        console.error("Unexpected error in rider profile creation:", error);
-                        riderError = error;
+                        console.error("Non-retryable error:", error);
                         shouldRetry = false;
                         break;
                     }
