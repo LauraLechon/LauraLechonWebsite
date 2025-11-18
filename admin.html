@@ -4842,7 +4842,7 @@
                 console.log('Successfully inserted into order_history');
 
                 // First, delete from rider_notifications if it exists
-                console.log('Deleting rider notifications for order:', orderId);
+                console.log('Deleting related rider notifications for order:', orderId);
                 const { error: deleteNotificationsError } = await supabase
                     .from('rider_notifications')
                     .delete()
