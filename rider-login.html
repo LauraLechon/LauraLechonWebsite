@@ -275,7 +275,28 @@
                     password 
                 });
 
-                if (authError) throw authError;
+                if (authError) {
+                    if (authError.message.includes('Email not confirmed')) {
+                        // If email is not confirmed, offer to resend confirmation
+                        const shouldResend = confirm('Your email has not been confirmed yet. Would you like us to resend the confirmation email?');
+                        if (shouldResend) {
+                            const { error: resendError } = await window.supabase.auth.resend({
+                                type: 'signup',
+                                email: email,
+                                options: {
+                                    emailRedirectTo: window.location.origin + '/rider-dashboard.html'
+                                }
+                            });
+                            
+                            if (resendError) {
+                                throw new Error('Failed to resend confirmation email: ' + resendError.message);
+                            } else {
+                                throw new Error('Confirmation email resent! Please check your inbox and click the confirmation link before logging in.');
+                            }
+                        }
+                    }
+                    throw authError;
+                }
 
                 console.log('Auth successful, checking rider profile...');
 
