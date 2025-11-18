@@ -4797,14 +4797,43 @@
                     }
                 }
 
-                // First, delete from delivery_history if it exists
-                const { error: deleteDeliveryError } = await supabase
+                // First, check if there are any delivery history records
+                const { data: deliveryRecords, error: fetchDeliveryError } = await supabase
                     .from('delivery_history')
-                    .delete()
+                    .select('id')
                     .eq('order_id', orderId);
 
-                if (deleteDeliveryError && deleteDeliveryError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
-                    throw deleteDeliveryError;
+                if (fetchDeliveryError) {
+                    console.error('Error checking delivery history:', fetchDeliveryError);
+                    throw fetchDeliveryError;
+                }
+
+                // If there are delivery history records, delete them
+                if (deliveryRecords && deliveryRecords.length > 0) {
+                    const { error: deleteDeliveryError } = await supabase
+                        .from('delivery_history')
+                        .delete()
+                        .eq('order_id', orderId);
+
+                    if (deleteDeliveryError) {
+                        console.error('Error deleting delivery history:', deleteDeliveryError);
+                        throw deleteDeliveryError;
+                    }
+                    
+                    // Verify deletion was successful
+                    const { data: verifyDeletion, error: verifyError } = await supabase
+                        .from('delivery_history')
+                        .select('id')
+                        .eq('order_id', orderId);
+                        
+                    if (verifyError) {
+                        console.error('Error verifying delivery history deletion:', verifyError);
+                        throw verifyError;
+                    }
+                    
+                    if (verifyDeletion && verifyDeletion.length > 0) {
+                        throw new Error('Failed to delete all delivery history records');
+                    }
                 }
 
                 // Generate a UUID for the order history
@@ -4842,12 +4871,31 @@
                 }
 
                 // Now we can safely delete from orders table
+                // First, update the order to remove any references that might cause foreign key issues
+                const { error: updateError } = await supabase
+                    .from('orders')
+                    .update({ 
+                        assigned_rider_id: null,
+                        status: 'Archived',
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', orderId);
+
+                if (updateError) {
+                    console.error('Error updating order before deletion:', updateError);
+                    throw updateError;
+                }
+
+                // Then delete the order
                 const { error: deleteError } = await supabase
                     .from('orders')
                     .delete()
                     .eq('id', orderId);
 
-                if (deleteError) throw deleteError;
+                if (deleteError) {
+                    console.error('Error deleting order:', deleteError);
+                    throw deleteError;
+                }
 
                 showNotification('Order moved to history', 'success');
                 
