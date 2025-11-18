@@ -541,15 +541,26 @@
                 
                 console.log("Auth user created:", authData);
                 
+                const authUserId = authData.user?.id;
+                if (!authUserId) {
+                    throw new Error("Failed to get user ID after signup. Please try again.");
+                }
+                
                 // 3️⃣ Insert rider profile with retry logic
                 console.log('Creating rider profile with retry logic...');
-                let retries = 3;
-                let riderResult, riderError;
+                let retries = 8; // Increased retries
+                let riderResult = null;
+                let lastError = null;
+                
+                // Initial delay to ensure auth user is committed
+                await new Promise(resolve => setTimeout(resolve, 1500));
 
                 while (retries > 0) {
                     try {
-                        // Try to create rider profile
-                        const result = await supabase.rpc(
+                        console.log(`Attempt ${9 - retries} to create rider profile...`);
+                        
+                        // Try to create rider profile using RPC
+                        const { data, error } = await supabase.rpc(
                             "create_rider_profile",
                             {
                                 p_name: name,
@@ -558,47 +569,117 @@
                                 p_vehicle_type: vehicleType,
                                 p_plate_number: plateNumber || '',
                                 p_status: 'Pending',
-                                p_auth_user_id: authData.user.id
+                                p_auth_user_id: authUserId
                             }
                         );
                         
-                        riderResult = result.data;
-                        riderError = result.error;
-                        
-                        // If no error, break out of the retry loop
-                        if (!riderError) {
-                            break;
+                        if (error) {
+                            throw error;
                         }
                         
-                        // If we get a foreign key violation, wait and retry
-                        if (riderError.code === '23503' && riderError.details && 
-                            riderError.details.includes('auth_user_id_fkey')) {
-                            console.log(`Auth user not found, retrying... (${retries} attempts left)`);
-                            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+                        // Check if the RPC returned a success indicator
+                        if (data && data.success === false) {
+                            throw new Error(data.error || "RPC returned unsuccessful result");
+                        }
+                        
+                        riderResult = data;
+                        console.log("✓ Rider profile created successfully:", riderResult);
+                        break; // Success! Exit the retry loop
+                        
+                    } catch (error) {
+                        lastError = error;
+                        console.error(`Attempt ${9 - retries} failed:`, error);
+                        
+                        // Check if this is a foreign key constraint error
+                        const isForeignKeyError = 
+                            error.code === '23503' || 
+                            error.sqlstate === '23503' ||
+                            (error.message && error.message.includes('foreign key constraint')) ||
+                            (error.error && error.error.includes('foreign key constraint'));
+                        
+                        if (isForeignKeyError) {
+                            const waitTime = 1000 * (9 - retries); // Exponential backoff
+                            console.log(`⏳ Auth user not yet available, waiting ${waitTime}ms... (${retries - 1} retries left)`);
+                            await new Promise(resolve => setTimeout(resolve, waitTime));
                             retries--;
                             continue;
                         }
                         
-                        // For other errors, break the loop
-                        break;
-                    } catch (error) {
-                        riderError = error;
+                        // For other errors, don't retry
+                        console.error("❌ Non-retryable error:", error);
                         break;
                     }
                 }
 
-                if (riderError || !riderResult || !riderResult.success) {
-                    console.error("Error creating rider profile after retries:", riderError || riderResult);
-                    throw new Error("Failed to create rider profile after multiple attempts. Please try again.");
+                // Check if we succeeded
+                if (!riderResult || (riderResult && riderResult.success === false)) {
+                    console.error("❌ Failed to create rider profile after all retries:", lastError);
+                    
+                    // More specific error message for foreign key violation
+                    const isForeignKeyError = 
+                        lastError?.code === '23503' || 
+                        lastError?.sqlstate === '23503' ||
+                        (lastError?.message && lastError.message.includes('foreign key constraint')) ||
+                        (lastError?.error && lastError.error.includes('foreign key constraint'));
+                    
+                    if (isForeignKeyError) {
+                        throw new Error("Authentication sync issue. Please wait a moment and try again, or contact support if the issue persists.");
+                    }
+                    
+                    throw new Error(lastError?.message || lastError?.error || "Failed to create rider profile. Please try again or contact support.");
                 }
 
-                console.log("Rider profile created:", riderResult);
+                console.log("✓ Rider profile creation confirmed");
                 
                 // Verify the rider was created successfully
-                const verification = await verifyRiderCreated(authData.user.id);
+                console.log("Verifying rider was created...");
+                const verification = await verifyRiderCreated(authUserId);
                 if (!verification.success) {
                     console.error("Failed to verify rider creation:", verification.error);
                     throw new Error("Failed to verify rider account was created. Please contact support.");
+                }
+                console.log("✓ Rider verified in database");
+                
+                // 4️⃣ Send Welcome Email with Password
+                try {
+                    const params = {
+                        rider_name: name,
+                        email: email,
+                        password: emailPassword,
+                        login_url: window.location.origin + "/rider-login.html"
+                    };
+
+                    console.log("Sending rider welcome email...");
+                    await window.parent.sendOrderEmail(
+                        email,
+                        name,
+                        "rider-credentials",
+                        7,
+                        params
+                    );
+                    
+                    console.log("✓ Welcome email sent!");
+                } catch (emailErr) {
+                    console.error("Error sending welcome email:", emailErr);
+                    showNotification("Account created, but failed to send welcome email.", "warning");
+                }
+                
+                // 5️⃣ Final Notification + Close Modal
+                showNotification("Rider account created successfully!", "success");
+                
+                // Reset form
+                event.target.reset();
+                
+                // Close the modal after a short delay (if opened from admin)
+                if (window.parent !== window) {
+                    setTimeout(() => {
+                        window.parent.postMessage({ type: 'CLOSE_RIDER_SIGNUP' }, '*');
+                    }, 1500);
+                } else {
+                    // If standalone, redirect to login
+                    setTimeout(() => {
+                        window.location.href = 'rider-login.html?signup=success&email=' + encodeURIComponent(email);
+                    }, 1500);
                 }
                 
                 // 3️⃣ Send Welcome Email with Password
