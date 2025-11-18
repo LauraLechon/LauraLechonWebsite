@@ -439,6 +439,25 @@
         // Global flag to track submission state
         let isSubmitting = false;
         
+        // Function to verify rider was created
+        async function verifyRiderCreated(authUserId, maxRetries = 5, delayMs = 1000) {
+            for (let i = 0; i < maxRetries; i++) {
+                const { data: rider, error } = await supabase
+                    .from('riders')
+                    .select('*')
+                    .eq('auth_user_id', authUserId)
+                    .single();
+
+                if (rider && !error) {
+                    return { success: true, rider };
+                }
+
+                console.log(`Rider not found, retrying... (${i + 1}/${maxRetries})`);
+                await new Promise(resolve => setTimeout(resolve, delayMs));
+            }
+            return { success: false, error: 'Rider not found after multiple attempts' };
+        }
+        
         // Function to get the appropriate Supabase client
         function getSupabaseClient() {
             // First try to get the client from the parent window (admin)
@@ -522,27 +541,65 @@
                 
                 console.log("Auth user created:", authData);
                 
-                // 3️⃣ Insert rider profile
-                console.log('Creating rider profile...');
-                const { data: riderResult, error: riderError } = await supabase.rpc(
-                    "create_rider_profile",
-                    {
-                        p_name: name,
-                        p_email: email,
-                        p_contact: contact,
-                        p_vehicle_type: vehicleType,
-                        p_plate_number: plateNumber || '',
-                        p_status: 'Pending',
-                        p_auth_user_id: authData.user.id
+                // 3️⃣ Insert rider profile with retry logic
+                console.log('Creating rider profile with retry logic...');
+                let retries = 3;
+                let riderResult, riderError;
+
+                while (retries > 0) {
+                    try {
+                        // Try to create rider profile
+                        const result = await supabase.rpc(
+                            "create_rider_profile",
+                            {
+                                p_name: name,
+                                p_email: email,
+                                p_contact: contact,
+                                p_vehicle_type: vehicleType,
+                                p_plate_number: plateNumber || '',
+                                p_status: 'Pending',
+                                p_auth_user_id: authData.user.id
+                            }
+                        );
+                        
+                        riderResult = result.data;
+                        riderError = result.error;
+                        
+                        // If no error, break out of the retry loop
+                        if (!riderError) {
+                            break;
+                        }
+                        
+                        // If we get a foreign key violation, wait and retry
+                        if (riderError.code === '23503' && riderError.details && 
+                            riderError.details.includes('auth_user_id_fkey')) {
+                            console.log(`Auth user not found, retrying... (${retries} attempts left)`);
+                            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+                            retries--;
+                            continue;
+                        }
+                        
+                        // For other errors, break the loop
+                        break;
+                    } catch (error) {
+                        riderError = error;
+                        break;
                     }
-                );
-                
-                if (riderError) {
-                    console.error("Error creating rider profile:", riderError);
-                    throw new Error("Failed to create rider profile.");
                 }
-                
+
+                if (riderError || !riderResult || !riderResult.success) {
+                    console.error("Error creating rider profile after retries:", riderError || riderResult);
+                    throw new Error("Failed to create rider profile after multiple attempts. Please try again.");
+                }
+
                 console.log("Rider profile created:", riderResult);
+                
+                // Verify the rider was created successfully
+                const verification = await verifyRiderCreated(authData.user.id);
+                if (!verification.success) {
+                    console.error("Failed to verify rider creation:", verification.error);
+                    throw new Error("Failed to verify rider account was created. Please contact support.");
+                }
                 
                 // 3️⃣ Send Welcome Email with Password
                 try {
