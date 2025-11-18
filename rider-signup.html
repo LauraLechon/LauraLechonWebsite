@@ -547,6 +547,8 @@
                 
                 const authUser = authData.user;
                 console.log('Auth user created:', authUser);
+                console.log('Auth user object:', JSON.stringify(authUser, null, 2));
+                console.log('Auth user ID type:', typeof authUser.id, 'value:', authUser.id);
                 
                 // 2️⃣ Create rider profile using the secure database function
                 console.log('Creating rider profile via database function...');
