@@ -545,8 +545,9 @@
                 console.log('Creating rider profile with retry logic...');
                 let retries = 3;
                 let riderResult, riderError;
+                let shouldRetry = true;
 
-                while (retries > 0) {
+                while (retries > 0 && shouldRetry) {
                     try {
                         // Try to create rider profile
                         const result = await supabase.rpc(
@@ -567,11 +568,15 @@
                         
                         // If no error, break out of the retry loop
                         if (!riderError) {
+                            shouldRetry = false;
                             break;
                         }
                         
+                        console.log("RPC error:", riderError);
+                        
                         // If we get a foreign key violation, wait and retry
-                        if (riderError.code === '23503' && riderError.details && 
+                        if (riderError.code === '23503' && 
+                            riderError.details && 
                             riderError.details.includes('auth_user_id_fkey')) {
                             console.log(`Auth user not found, retrying... (${retries} attempts left)`);
                             await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
@@ -579,17 +584,28 @@
                             continue;
                         }
                         
-                        // For other errors, break the loop
+                        // For other errors, don't retry
+                        shouldRetry = false;
                         break;
                     } catch (error) {
+                        console.error("Unexpected error in rider profile creation:", error);
                         riderError = error;
+                        shouldRetry = false;
                         break;
                     }
                 }
 
                 if (riderError || !riderResult || !riderResult.success) {
                     console.error("Error creating rider profile after retries:", riderError || riderResult);
-                    throw new Error("Failed to create rider profile after multiple attempts. Please try again.");
+                    
+                    // More specific error message for foreign key violation
+                    if (riderError?.code === '23503' && 
+                        riderError.details && 
+                        riderError.details.includes('auth_user_id_fkey')) {
+                        throw new Error("Authentication user was not found. Please try signing up again.");
+                    }
+                    
+                    throw new Error("Failed to create rider profile. Please try again or contact support.");
                 }
 
                 console.log("Rider profile created:", riderResult);
