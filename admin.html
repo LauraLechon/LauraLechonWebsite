@@ -4841,32 +4841,17 @@
 
                 console.log('Successfully inserted into order_history');
 
-                // First, delete from rider_notifications if it exists
-                console.log('Deleting related rider notifications for order:', orderId);
-                const { error: deleteNotificationsError } = await supabase
-                    .from('rider_notifications')
-                    .delete()
-                    .eq('order_id', orderId);
-
-                if (deleteNotificationsError && deleteNotificationsError.code !== 'PGRST116') { // PGRST116 is "no rows found"
-                    console.error('Error deleting rider notifications:', deleteNotificationsError);
-                    throw deleteNotificationsError;
-                }
-
-                // Then delete from delivery_history
+                // Delete any related delivery history records
                 console.log('Deleting related delivery history for order:', orderId);
                 const { error: deleteHistoryError } = await supabase
                     .from('delivery_history')
                     .delete()
                     .eq('order_id', orderId);
 
-                if (deleteHistoryError && deleteHistoryError.code !== 'PGRST116') {
-                    console.error('Error deleting delivery history:', deleteHistoryError);
-                    throw deleteHistoryError;
+                // Log the error but don't fail if the table doesn't exist or records don't exist
+                if (deleteHistoryError) {
+                    console.warn('Could not delete delivery history (this may be normal):', deleteHistoryError);
                 }
-
-                // Small delay to ensure deletions are processed
-                await new Promise(resolve => setTimeout(resolve, 500));
 
                 // Now delete the order from the orders table
                 console.log('Deleting order from orders table:', orderId);
