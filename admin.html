@@ -4797,44 +4797,72 @@
                     }
                 }
 
-                // First, check if there are any delivery history records
-                const { data: deliveryRecords, error: fetchDeliveryError } = await supabase
-                    .from('delivery_history')
-                    .select('id')
-                    .eq('order_id', orderId);
+                // Function to delete delivery history with retry
+                const deleteDeliveryHistory = async (maxRetries = 3, delayMs = 500) => {
+                    let retries = 0;
+                    let lastError;
 
-                if (fetchDeliveryError) {
-                    console.error('Error checking delivery history:', fetchDeliveryError);
-                    throw fetchDeliveryError;
-                }
+                    while (retries < maxRetries) {
+                        try {
+                            // Check if there are any delivery history records
+                            const { data: deliveryRecords, error: fetchError } = await supabase
+                                .from('delivery_history')
+                                .select('id')
+                                .eq('order_id', orderId);
 
-                // If there are delivery history records, delete them
-                if (deliveryRecords && deliveryRecords.length > 0) {
-                    const { error: deleteDeliveryError } = await supabase
-                        .from('delivery_history')
-                        .delete()
-                        .eq('order_id', orderId);
+                            if (fetchError) throw fetchError;
 
-                    if (deleteDeliveryError) {
-                        console.error('Error deleting delivery history:', deleteDeliveryError);
-                        throw deleteDeliveryError;
+                            // If no records found, we're done
+                            if (!deliveryRecords || deliveryRecords.length === 0) {
+                                return true;
+                            }
+
+                            // Try to delete the records
+                            const { error: deleteError } = await supabase
+                                .from('delivery_history')
+                                .delete()
+                                .eq('order_id', orderId);
+
+                            if (deleteError) throw deleteError;
+
+                            // Small delay to allow the delete operation to propagate
+                            await new Promise(resolve => setTimeout(resolve, delayMs));
+
+                            // Verify deletion
+                            const { data: remainingRecords, error: verifyError } = await supabase
+                                .from('delivery_history')
+                                .select('id')
+                                .eq('order_id', orderId);
+
+                            if (verifyError) throw verifyError;
+
+                            if (!remainingRecords || remainingRecords.length === 0) {
+                                return true; // Successfully deleted all records
+                            }
+
+                            retries++;
+                            if (retries < maxRetries) {
+                                await new Promise(resolve => setTimeout(resolve, delayMs * 2));
+                            }
+                        } catch (error) {
+                            lastError = error;
+                            retries++;
+                            if (retries < maxRetries) {
+                                await new Promise(resolve => setTimeout(resolve, delayMs * 2));
+                            }
+                        }
+                    }
+
+                    if (lastError) {
+                        console.error('Error in deleteDeliveryHistory after retries:', lastError);
+                        throw lastError;
                     }
                     
-                    // Verify deletion was successful
-                    const { data: verifyDeletion, error: verifyError } = await supabase
-                        .from('delivery_history')
-                        .select('id')
-                        .eq('order_id', orderId);
-                        
-                    if (verifyError) {
-                        console.error('Error verifying delivery history deletion:', verifyError);
-                        throw verifyError;
-                    }
-                    
-                    if (verifyDeletion && verifyDeletion.length > 0) {
-                        throw new Error('Failed to delete all delivery history records');
-                    }
-                }
+                    throw new Error(`Failed to delete delivery history after ${maxRetries} attempts`);
+                };
+
+                // Execute the delivery history deletion with retry
+                await deleteDeliveryHistory();
 
                 // Generate a UUID for the order history
                 const uuid = crypto.randomUUID();
@@ -4870,32 +4898,71 @@
                     throw historyError;
                 }
 
-                // Now we can safely delete from orders table
-                // First, update the order to remove any references that might cause foreign key issues
-                const { error: updateError } = await supabase
-                    .from('orders')
-                    .update({ 
-                        assigned_rider_id: null,
-                        status: 'Archived',
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', orderId);
+                // Function to delete order with retry
+                const deleteOrder = async (maxRetries = 3, delayMs = 500) => {
+                    let retries = 0;
+                    let lastError;
 
-                if (updateError) {
-                    console.error('Error updating order before deletion:', updateError);
-                    throw updateError;
-                }
+                    while (retries < maxRetries) {
+                        try {
+                            // First, update the order to remove any references
+                            const { error: updateError } = await supabase
+                                .from('orders')
+                                .update({ 
+                                    assigned_rider_id: null,
+                                    status: 'Archived',
+                                    updated_at: new Date().toISOString()
+                                })
+                                .eq('id', orderId);
 
-                // Then delete the order
-                const { error: deleteError } = await supabase
-                    .from('orders')
-                    .delete()
-                    .eq('id', orderId);
+                            if (updateError) throw updateError;
 
-                if (deleteError) {
-                    console.error('Error deleting order:', deleteError);
-                    throw deleteError;
-                }
+                            // Small delay to allow the update to propagate
+                            await new Promise(resolve => setTimeout(resolve, delayMs));
+
+                            // Then delete the order
+                            const { error: deleteError } = await supabase
+                                .from('orders')
+                                .delete()
+                                .eq('id', orderId);
+
+                            if (deleteError) throw deleteError;
+
+                            // Verify deletion
+                            const { data: orderExists, error: checkError } = await supabase
+                                .from('orders')
+                                .select('id')
+                                .eq('id', orderId);
+
+                            if (checkError) throw checkError;
+
+                            if (!orderExists || orderExists.length === 0) {
+                                return true; // Successfully deleted
+                            }
+
+                            retries++;
+                            if (retries < maxRetries) {
+                                await new Promise(resolve => setTimeout(resolve, delayMs * 2));
+                            }
+                        } catch (error) {
+                            lastError = error;
+                            retries++;
+                            if (retries < maxRetries) {
+                                await new Promise(resolve => setTimeout(resolve, delayMs * 2));
+                            }
+                        }
+                    }
+
+                    if (lastError) {
+                        console.error('Error in deleteOrder after retries:', lastError);
+                        throw lastError;
+                    }
+                    
+                    throw new Error(`Failed to delete order after ${maxRetries} attempts`);
+                };
+
+                // Execute the order deletion with retry
+                await deleteOrder();
 
                 showNotification('Order moved to history', 'success');
                 
