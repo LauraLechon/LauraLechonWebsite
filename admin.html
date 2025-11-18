@@ -3599,19 +3599,9 @@
                     throw historyError;
                 }
 
-                // Now delete from orders table
+                // Delete the order and all related records using the safe delete function
                 console.log('Deleting order with ID:', order.id, 'Type:', typeof order.id);
-                
-                // Delete the order using the numeric ID directly
-                const { error: deleteError } = await supabase
-                    .from('orders')
-                    .delete()
-                    .eq('id', order.id);
-                
-                if (deleteError) {
-                    console.error('Error deleting order:', deleteError);
-                    throw new Error('Failed to delete order: ' + deleteError.message);
-                }
+                await safeDeleteOrder(order.id);
                 
                 console.log('Order deleted successfully');
 
@@ -3922,16 +3912,8 @@
                     } catch (e) {
                         console.log('Attempting to delete order using numeric ID...');
                         
-                        // Delete from orders table using the numeric ID
-                        const { error: deleteError } = await supabase
-                            .from('orders')
-                            .delete()
-                            .eq('id', order.id);
-                        
-                        if (deleteError) {
-                            console.error('Error deleting order:', deleteError);
-                            throw new Error('Failed to delete order: ' + deleteError.message);
-                        }
+                        // Delete the order and all related records using the safe delete function
+                        await safeDeleteOrder(order.id);
                         
                         console.log('Order deleted successfully');
                     }
@@ -4586,6 +4568,62 @@
         let currentCancellingOrderId = null;
         let currentOrder = null;
 
+        /**
+         * Safely deletes an order and all its related records
+         * @param {string|number} orderId - The ID of the order to delete
+         * @returns {Promise<boolean>} - True if deletion was successful, false otherwise
+         */
+        async function safeDeleteOrder(orderId) {
+            try {
+                console.log('Starting safe deletion of order:', orderId);
+                
+                // First, delete from rider_notifications if it exists
+                console.log('Deleting related rider notifications for order:', orderId);
+                const { error: deleteNotificationsError } = await supabase
+                    .from('rider_notifications')
+                    .delete()
+                    .eq('order_id', orderId);
+
+                if (deleteNotificationsError && deleteNotificationsError.code !== 'PGRST116') {
+                    console.error('Error deleting rider notifications:', deleteNotificationsError);
+                    throw deleteNotificationsError;
+                }
+
+                // Then delete from delivery_history
+                console.log('Deleting related delivery history for order:', orderId);
+                const { error: deleteHistoryError } = await supabase
+                    .from('delivery_history')
+                    .delete()
+                    .eq('order_id', orderId);
+
+                if (deleteHistoryError && deleteHistoryError.code !== 'PGRST116') {
+                    console.error('Error deleting delivery history:', deleteHistoryError);
+                    throw deleteHistoryError;
+                }
+
+                // Small delay to ensure deletions are processed
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                // Now delete the order from the orders table
+                console.log('Deleting order from orders table:', orderId);
+                const { error: deleteOrderError } = await supabase
+                    .from('orders')
+                    .delete()
+                    .eq('id', orderId);
+
+                if (deleteOrderError) {
+                    console.error('Error deleting order:', deleteOrderError);
+                    throw deleteOrderError;
+                }
+
+                console.log('Order and all related records deleted successfully');
+                return true;
+            } catch (error) {
+                console.error('Error in safeDeleteOrder:', error);
+                throw error;
+            }
+        }
+
         // Cancel order with confirmation
         async function cancelOrder(orderId) {
             if (!confirm('Are you sure you want to cancel this order?')) {
@@ -4720,14 +4758,11 @@
                     throw new Error(`Failed to delete delivery history: ${deleteHistoryError.message}`);
                 }
 
-                // Now delete from orders
+                // Delete the order and all related records using the safe delete function
                 console.log('Attempting to delete order from orders table:', orderId);
-                const { error: deleteError } = await supabase
-                    .from('orders')
-                    .delete()
-                    .eq('id', orderId);
-
-                if (deleteError) {
+                try {
+                    await safeDeleteOrder(orderId);
+                } catch (deleteError) {
                     console.error('Error deleting order:', deleteError);
                     throw new Error(`Failed to delete order: ${deleteError.message}`);
                 }
@@ -4868,17 +4903,9 @@
                 // Small delay to ensure deletions are processed
                 await new Promise(resolve => setTimeout(resolve, 500));
 
-                // Now delete the order from the orders table
+                // Delete the order and all related records using the safe delete function
                 console.log('Deleting order from orders table:', orderId);
-                const { error: deleteOrderError } = await supabase
-                    .from('orders')
-                    .delete()
-                    .eq('id', orderId);
-
-                if (deleteOrderError) {
-                    console.error('Error deleting order:', deleteOrderError);
-                    throw deleteOrderError;
-                }
+                await safeDeleteOrder(orderId);
 
                 console.log('Successfully deleted order from orders table');
 
