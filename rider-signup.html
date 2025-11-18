@@ -543,11 +543,11 @@
                 
                 // 3️⃣ Insert rider profile with retry logic
                 console.log('Creating rider profile with retry logic...');
+                const authUserId = authData.user?.id;
                 console.log('Auth user ID to use:', authUserId);
                 let retries = 5; // Increased from 3 to 5 retries
                 let riderResult, riderError;
                 let shouldRetry = true;
-                const authUserId = authData.user?.id;
                 
                 if (!authUserId) {
                     throw new Error("Failed to get user ID after signup. Please try again.");
