@@ -4598,7 +4598,7 @@
 
                 if (deleteHistoryError && deleteHistoryError.code !== 'PGRST116') {
                     console.error('Error deleting delivery history:', deleteHistoryError);
-                    throw deleteHistoryError;
+                    // Don't throw here, we'll try again if the order deletion fails
                 }
 
                 // Small delay to ensure deletions are processed
@@ -4606,17 +4606,51 @@
 
                 // Now delete the order from the orders table
                 console.log('Deleting order from orders table:', orderId);
-                const { error: deleteOrderError } = await supabase
-                    .from('orders')
-                    .delete()
-                    .eq('id', orderId);
-
+                let deleteOrderError = null;
+                let retryCount = 0;
+                const maxRetries = 2;
+                
+                while (retryCount <= maxRetries) {
+                    const { error } = await supabase
+                        .from('orders')
+                        .delete()
+                        .eq('id', orderId);
+                    
+                    if (!error) {
+                        // Successfully deleted the order
+                        console.log('Order and all related records deleted successfully');
+                        return true;
+                    }
+                    
+                    // If we get a foreign key violation, try to clean up delivery_history again
+                    if (error.code === '23503' && error.details && error.details.includes('delivery_history')) {
+                        console.log('Foreign key violation detected, retrying delivery_history cleanup...');
+                        
+                        // Try a more aggressive cleanup of delivery_history
+                        const { error: retryHistoryError } = await supabase
+                            .from('delivery_history')
+                            .delete()
+                            .eq('order_id', orderId);
+                            
+                        if (retryHistoryError && retryHistoryError.code !== 'PGRST116') {
+                            console.error('Error retrying delivery history deletion:', retryHistoryError);
+                        }
+                        
+                        // Wait a bit before retrying
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        retryCount++;
+                    } else {
+                        // For other errors, just throw them
+                        deleteOrderError = error;
+                        break;
+                    }
+                }
+                
                 if (deleteOrderError) {
-                    console.error('Error deleting order:', deleteOrderError);
+                    console.error('Error deleting order after retries:', deleteOrderError);
                     throw deleteOrderError;
                 }
-
-                console.log('Order and all related records deleted successfully');
+                
                 return true;
             } catch (error) {
                 console.error('Error in safeDeleteOrder:', error);
