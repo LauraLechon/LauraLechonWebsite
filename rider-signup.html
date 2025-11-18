@@ -543,6 +543,7 @@
                 
                 // 3️⃣ Insert rider profile with retry logic
                 console.log('Creating rider profile with retry logic...');
+                console.log('Auth user ID to use:', authUserId);
                 let retries = 5; // Increased from 3 to 5 retries
                 let riderResult, riderError;
                 let shouldRetry = true;
@@ -586,9 +587,10 @@
                         console.error(`Attempt ${5 - retries + 1} failed:`, error);
                         
                         // If we get a foreign key violation, wait and retry
+                        console.log('Error details:', JSON.stringify(error, null, 2));
                         if (error.code === '23503' && 
                             error.details && 
-                            error.details.includes('auth_user_id_fkey')) {
+                            (error.details.includes('auth_user_id_fkey') || error.details.includes('riders_auth_user_id_fkey'))) {
                             const waitTime = 1000 * (5 - retries + 1); // Exponential backoff
                             console.log(`Auth user not found, retrying in ${waitTime}ms... (${retries} attempts left)`);
                             await new Promise(resolve => setTimeout(resolve, waitTime));
@@ -609,7 +611,8 @@
                     // More specific error message for foreign key violation
                     if (riderError?.code === '23503' && 
                         riderError.details && 
-                        riderError.details.includes('auth_user_id_fkey')) {
+                        (riderError.details.includes('auth_user_id_fkey') || 
+                         riderError.details.includes('riders_auth_user_id_fkey'))) {
                         throw new Error("Authentication user was not found. Please try signing up again.");
                     }
                     
