@@ -595,36 +595,34 @@
                 
                 // 3️⃣ Insert rider profile with retry logic
                 console.log('Creating rider profile with retry logic...');
-                let retries = 5; // Reduced retries since we've already waited for user
+                let retries = 8;
                 let riderResult = null;
                 let lastError = null;
+
+                // Initial delay to ensure auth user is committed
                 await new Promise(resolve => setTimeout(resolve, 1500));
 
                 while (retries > 0) {
                     try {
                         console.log(`Attempt ${9 - retries} to create rider profile...`);
                         
-                        // Try to create rider profile using RPC
-                        const { data, error } = await supabase.rpc(
-                            "create_rider_profile",
-                            {
-                                p_name: name,
-                                p_email: email,
-                                p_contact: contact,
-                                p_vehicle_type: vehicleType,
-                                p_plate_number: plateNumber || '',
-                                p_status: 'Pending',
-                                p_auth_user_id: authUserId
-                            }
-                        );
+                        // Use direct insert instead of RPC
+                        const { data, error } = await supabase
+                            .from('riders')
+                            .insert([{
+                                name: name,
+                                email: email,
+                                contact: contact,
+                                vehicle_type: vehicleType,
+                                plate_number: plateNumber || '',
+                                status: 'Pending',
+                                auth_user_id: authUserId
+                            }])
+                            .select('*')
+                            .single();
                         
                         if (error) {
                             throw error;
-                        }
-                        
-                        // Check if the RPC returned a success indicator
-                        if (data && data.success === false) {
-                            throw new Error(data.error || "RPC returned unsuccessful result");
                         }
                         
                         riderResult = data;
@@ -638,19 +636,12 @@
                         // Check if this is a foreign key constraint error
                         const isForeignKeyError = 
                             error.code === '23503' || 
-                            error.sqlstate === '23503' ||
-                            (error.message && error.message.includes('foreign key constraint')) ||
-                            (error.error && error.error.includes('foreign key constraint'));
+                            error.code === 'foreign_key_violation' ||
+                            (error.message && error.message.includes('foreign key constraint'));
                         
                         if (isForeignKeyError) {
-                            // Verify if user exists in auth.users
-                            const userExists = await verifyUserExists(supabase, authUserId, 1, 1000);
-                            if (!userExists) {
-                                throw new Error("User account was not created in the database. Please try signing up again.");
-                            }
-                            
-                            const waitTime = 1000; // Fixed wait time since we're already checking user existence
-                            console.log(`⏳ Retrying rider profile creation... (${retries - 1} retries left)`);
+                            const waitTime = 1000 * (9 - retries); // Exponential backoff
+                            console.log(`⏳ Auth user not yet available, waiting ${waitTime}ms... (${retries - 1} retries left)`);
                             await new Promise(resolve => setTimeout(resolve, waitTime));
                             retries--;
                             continue;
